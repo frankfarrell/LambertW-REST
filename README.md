@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/frankfarrell/SNOWBALL-MAGIC-19851014.svg?branch=master)](https://travis-ci.org/frankfarrell/SNOWBALL-MAGIC-19851014)
+
  * Endpoints
 GET
 /workorder
