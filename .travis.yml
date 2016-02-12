@@ -5,6 +5,6 @@ deploy:
   provider: heroku
   api_key:
     secure: LIYNqpaKnyqDwcn5evF4WglYQSj15stBvnFSHbcXeBKVFVmwHKvxC8ycztHXkhg2SDocejb+MDLXA+Uglrr6f42ltCuY1NXbtHcDskJM2EiY5uABdTLDLzTImxeBQ2N45BKKHeHHxriyj/T4+SE9jZj556B9FkLy9gPlndWO8oDOrrcq2HirEXIYyiOlNG1S2c0QNV/t8KVHDOMcK+0K0sQToD4yRvlGgRC8AqZFe6/eFCBRKhcRvmQw+fjSrck9Emt9+02tjtJEnuKxffXdL/v/chMTV0cSLkx+cH/Mb8bpsQlcfOSfSqhwE/xcGfKfqA//G7fuOqeAKXHtVSHFe6v0/rWJYM7nY04QIy9qqR8n31aUiSdowzG5oxhybOb4n2rBIHVMOSoEdthlOy5RELihFSe9s/b2z7PSaB0W16NWiDgLTD0CykPJHmus19mKMI/qQIGL7CWF6HQiZjapathiuvMq/tboLWHce5I3+pJ2/dK8KZW549twVuFLarqyZlBjeciFmL2sxCFD19KUgUj+VfR+KlnybtHyVj0r7miaRXSYfCL+ntlkYMhv5InfnPHDhSm8cB4mh2JJF0YP/Xd/wJxwYNCMLce7Q6yTIHoAQhSRwSl9M0XhxBLUgElh+9wRj1aiUYygjdrU0x61zPH1W+p3laiSszN3QL4yOYA=
-  app: SNOWBALL-MAGIC-19851014
+  app: franksorder
   on:
     repo: frankfarrell/SNOWBALL-MAGIC-19851014
