@@ -3,6 +3,7 @@ package com.github.frankfarrell.snowball;
 import com.github.frankfarrell.snowball.controller.WorkOrderController;
 import com.github.frankfarrell.snowball.service.MockWorkOrderImpl;
 import com.github.frankfarrell.snowball.service.WorkOrderQueue;
+import com.github.frankfarrell.snowball.service.statistics.StatisticsService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
@@ -43,8 +44,13 @@ public class Application {
     }
 
     @Bean
-    public WorkOrderController workOrderController(WorkOrderQueue workOrderQueue){
-        return new WorkOrderController(workOrderQueue);
+    public WorkOrderController workOrderController(WorkOrderQueue workOrderQueue, StatisticsService statisticsService){
+        return new WorkOrderController(workOrderQueue, statisticsService);
+    }
+
+    @Bean
+    public StatisticsService statisticsService(WorkOrderQueue workOrderQueue){
+        return new StatisticsService(workOrderQueue);
     }
 
     @Bean

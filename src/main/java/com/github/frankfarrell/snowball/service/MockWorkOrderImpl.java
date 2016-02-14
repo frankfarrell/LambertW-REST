@@ -1,8 +1,11 @@
 package com.github.frankfarrell.snowball.service;
 
+import com.github.frankfarrell.snowball.model.QueuedWorkOrder;
 import com.github.frankfarrell.snowball.model.WorkOrder;
+import com.github.frankfarrell.snowball.model.WorkOrderClass;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,18 +16,43 @@ import java.util.List;
 @Service
 public class MockWorkOrderImpl implements WorkOrderQueue{
 
-    public List<WorkOrder> getAllWorkOrders(){
+    /*
+    How to implement priority queue with all the features below?
+    4 Lists
+    4 Priority Queues
+    4 Sorted Set of EntrySets, eg an Ordered Hash Map that is unique on key
+     */
 
-        ArrayList<WorkOrder> allWorkOrders = new ArrayList<WorkOrder>(2);
+    
 
-        WorkOrder workOrder1 = new WorkOrder(1L, Instant.now());
-        WorkOrder workOrder2 = new WorkOrder(2L, Instant.now());
+    public List<QueuedWorkOrder> getAllWorkOrders(){
+
+        ArrayList<QueuedWorkOrder> allWorkOrders = new ArrayList<QueuedWorkOrder>(2);
+
+        QueuedWorkOrder workOrder1 = new QueuedWorkOrder(1L, Instant.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
+        QueuedWorkOrder workOrder2 = new QueuedWorkOrder(2L, Instant.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
 
         allWorkOrders.add(workOrder1);
         allWorkOrders.add(workOrder2);
 
         return allWorkOrders;
 
+    }
+
+    public void removeWorkOrder(long id){
+
+    }
+
+    public QueuedWorkOrder getWorkOrder(long id){
+        return new QueuedWorkOrder(id, Instant.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
+    }
+
+    public WorkOrder popWorkOrder(){
+        return new WorkOrder(1L, Instant.now());
+    }
+
+    public QueuedWorkOrder pushWorkOrder(WorkOrder workOrder){
+        return new QueuedWorkOrder(workOrder.getId(), workOrder.getTimeStamp(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
     }
 
 }
