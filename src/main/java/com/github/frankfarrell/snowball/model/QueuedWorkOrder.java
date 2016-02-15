@@ -23,18 +23,17 @@ import java.time.ZonedDateTime;
 public class QueuedWorkOrder extends WorkOrder{
 
     private long positionInQueue;
-    private Duration durationInQueue;
+    private long durationInQueue; //In seconds
     private WorkOrderClass workOrderClass;
 
-    public QueuedWorkOrder(long id, OffsetDateTime timeStamp, Duration durationInQueue, long positionInQueue, WorkOrderClass workOrderClass) {
+    public QueuedWorkOrder(long id, OffsetDateTime timeStamp, long durationInQueue, long positionInQueue, WorkOrderClass workOrderClass) {
         super(id, timeStamp);
         this.durationInQueue = durationInQueue;
         this.positionInQueue = positionInQueue;
         this.workOrderClass = workOrderClass;
     }
 
-    @JsonSerialize(using = DurationSerializer.class)
-    public Duration getDurationInQueue() {
+    public long getDurationInQueue() {
         return durationInQueue;
     }
 
@@ -44,13 +43,6 @@ public class QueuedWorkOrder extends WorkOrder{
 
     public WorkOrderClass getWorkOrderClass() {
         return workOrderClass;
-    }
-
-    public static class DurationSerializer extends JsonSerializer<Duration> {
-        @Override
-        public void serialize(Duration duration, JsonGenerator json, SerializerProvider provider) throws IOException, JsonProcessingException {
-            json.writeNumber(duration.getSeconds());
-        }
     }
 
 }

@@ -15,6 +15,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by Frank on 12/02/2016.
@@ -41,33 +46,51 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
         managementQueue = new LinkedList<WorkOrder>();
     }
 
-
+    /**
+     * @return All WorkOrders Sorted By Current Priority
+     * Returns id, time of entry, time in queue, position in queue, Type Of Order
+     */
     public List<QueuedWorkOrder> getAllWorkOrders(){
 
-        ArrayList<QueuedWorkOrder> allWorkOrders = new ArrayList<QueuedWorkOrder>(2);
+        /*
+        Start with management q
+         */
+        final OffsetDateTime currentTime = OffsetDateTime.now();
 
-        QueuedWorkOrder workOrder1 = new QueuedWorkOrder(1L, OffsetDateTime.now(), Duration.ofSeconds(10), 5, WorkOrderClass.NOMRAL);
-        QueuedWorkOrder workOrder2 = new QueuedWorkOrder(2L, OffsetDateTime.now(), Duration.ofSeconds(20), 5, WorkOrderClass.NOMRAL);
+        List<QueuedWorkOrder> managementOrders = IntStream.range(0, managementQueue.size())
+                .mapToObj(i ->{
+                    WorkOrder order = managementQueue.get(i);
+                    return new QueuedWorkOrder(order.getId(),
+                            order.getTimeStamp(),
+                            order.getTimeStamp().until(currentTime,ChronoUnit.SECONDS),
+                            i,
+                            WorkOrderClass.MANAGEMENT_OVERRIDE );
+                }).collect(Collectors.toList());
 
-        allWorkOrders.add(workOrder1);
-        allWorkOrders.add(workOrder2);
-
-        return allWorkOrders;
-
+        /*
+        Iter over the other three
+         */
+        return managementOrders;
     }
+
+    /*
+    Use to get the top order. Eg pick 1 from each list and sort
+    Use to sort all
+     */
+    //private List<QueuedWorkOrder> sortWorkOrders(List<WorkOrder> orders, OffsetDateTime currentTime){
+    //}
 
     public void removeWorkOrder(long id){
         List<WorkOrder> queue = getQueueForId(id);
 
-        //Find the index in the lst
-        //queue.remove();
+        queue = queue.stream().filter(workOrder -> workOrder.getId() != id).collect(Collectors.toList());
     }
 
     public QueuedWorkOrder getWorkOrder(long id){
 
         List<WorkOrder> queue = getQueueForId(id);
         //TODO find item in the queue
-        return new QueuedWorkOrder(id, OffsetDateTime.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
+        return new QueuedWorkOrder(id, OffsetDateTime.now(), 0, 5, WorkOrderClass.NOMRAL);
     }
 
     //TODO Split this out into methods to be reused
@@ -119,8 +142,29 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
 
         queue.add(workOrder);
 
-        return new QueuedWorkOrder(workOrder.getId(), workOrder.getTimeStamp(), Duration.ZERO, getQueueLength(), getWorkOrderClass(workOrder.getId()));
+        return new QueuedWorkOrder(workOrder.getId(), workOrder.getTimeStamp(), 0, getQueueLength(), getWorkOrderClass(workOrder.getId()));
     }
+
+    /*
+    For a given id it returns ranking function - Rank higher number is better, but mngmt override always wins
+    getPriorityFunctionForId(4) returns function(id, duration) return long
+     */
+    /*
+    private BiFunction<Long, Double, Long> getPriorityFunctionForId(long id){
+        if(id%3 == 0 && id%5 == 0){
+            return managementQueue;
+        }
+        else if( id%5 == 0){
+            return vipQueue;
+        }
+        else if (id%3 == 0 ){
+            return priorityQueue;
+        }
+        else{
+            return normalQueue;
+        }
+    }
+    */
 
     private List<WorkOrder> getQueueForId(long id){
         if(id%3 == 0 && id%5 == 0){
