@@ -12,16 +12,12 @@ import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -83,6 +79,7 @@ public class WorkOrderController {
     )
     public @ResponseBody ResponseEntity deleteWorkOrder(@PathVariable @Valid Long id){//TODO validate all ids
 
+        workOrderQueue.removeWorkOrder(id);
         return new ResponseEntity(HttpStatus.NO_CONTENT);
 
     }
@@ -92,13 +89,34 @@ public class WorkOrderController {
     Pop from queue is not implemented as Get as this is not idempotent.
     This has the effect of the changing the state of the queue
     Possible extensions are to implement ack and Delete on client side?
+
+    ActiveMQ Solution: http://activemq.apache.org/restful-queue.html
+    POST /subscriptions
+    Returns uri to a resource, hidden from other clients
+    Client does a GET and a DELETE
+    Server can implement time out, if client fails tricky
+
+    Google Task Queue solution: https://cloud.google.com/appengine/docs/java/taskqueue/rest/
+    Lease/Lock on Queue items
+
+    Amazon Simple Queue: http://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ChangeMessageVisibility.html
+    Chang Visiblity on resource -> Locking model
+
+    Azure uses GET -> Not idempotent
+
+    My solution:
+    POST /workorder
+    returns uri
+    Client works on it and deletes it
+    Why? Extensible for failover, timeouts in future
+
      */
     @RequestMapping(
             value = "",
             method = RequestMethod.POST,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<WorkOrder> popWorkOrder(@RequestBody int i){//TODO What sort of command?
+    public @ResponseBody ResponseEntity<WorkOrder> popWorkOrder(){
         WorkOrder workOrder = workOrderQueue.popWorkOrder();
         return new ResponseEntity<WorkOrder>(workOrder, HttpStatus.OK);
     }
@@ -108,8 +126,8 @@ public class WorkOrderController {
             method = RequestMethod.PUT,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@PathVariable long id, @RequestBody OffsetDateTime timeStamp){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
-        QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(new WorkOrder(id, timeStamp));
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@PathVariable long id, @RequestBody WorkOrder workder){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
+        QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(workder);
         return new ResponseEntity<QueuedWorkOrder>(workOrder, HttpStatus.OK);
     }
 

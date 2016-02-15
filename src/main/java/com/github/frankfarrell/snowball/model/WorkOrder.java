@@ -1,5 +1,7 @@
 package com.github.frankfarrell.snowball.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModelProperty;
 
 import java.time.OffsetDateTime;
@@ -13,7 +15,9 @@ public class WorkOrder {
     private final long id;
     private final OffsetDateTime timeStamp;
 
-    public WorkOrder(long id, OffsetDateTime timeStamp) {
+    //Uses These annotations because object is immutable and setters are not available
+    @JsonCreator
+    public WorkOrder(@JsonProperty("id") long id, @JsonProperty("timeStamp") OffsetDateTime timeStamp) {
         this.id = id;
         this.timeStamp = timeStamp;
     }
