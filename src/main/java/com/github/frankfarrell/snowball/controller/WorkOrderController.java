@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -106,7 +108,7 @@ public class WorkOrderController {
             method = RequestMethod.PUT,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@PathVariable long id, @RequestBody Instant timeStamp){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@PathVariable long id, @RequestBody OffsetDateTime timeStamp){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
         QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(new WorkOrder(id, timeStamp));
         return new ResponseEntity<QueuedWorkOrder>(workOrder, HttpStatus.OK);
     }

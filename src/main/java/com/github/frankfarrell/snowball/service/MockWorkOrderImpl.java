@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -44,8 +46,8 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
 
         ArrayList<QueuedWorkOrder> allWorkOrders = new ArrayList<QueuedWorkOrder>(2);
 
-        QueuedWorkOrder workOrder1 = new QueuedWorkOrder(1L, Instant.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
-        QueuedWorkOrder workOrder2 = new QueuedWorkOrder(2L, Instant.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
+        QueuedWorkOrder workOrder1 = new QueuedWorkOrder(1L, OffsetDateTime.now(), Duration.ofSeconds(10), 5, WorkOrderClass.NOMRAL);
+        QueuedWorkOrder workOrder2 = new QueuedWorkOrder(2L, OffsetDateTime.now(), Duration.ofSeconds(20), 5, WorkOrderClass.NOMRAL);
 
         allWorkOrders.add(workOrder1);
         allWorkOrders.add(workOrder2);
@@ -65,7 +67,7 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
 
         List<WorkOrder> queue = getQueueForId(id);
         //TODO find item in the queue
-        return new QueuedWorkOrder(id, Instant.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
+        return new QueuedWorkOrder(id, OffsetDateTime.now(), Duration.ZERO, 5, WorkOrderClass.NOMRAL);
     }
 
     //TODO Split this out into methods to be reused
@@ -81,7 +83,7 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
             WorkOrder nextPriority = priorityQueue.get(0);
             WorkOrder nextVip = vipQueue.get(0);
 
-            Instant currentTime = Instant.now();
+            OffsetDateTime currentTime = OffsetDateTime.now();
 
             long normalTime = nextNormal.getTimeStamp().until(currentTime, ChronoUnit.SECONDS);
 

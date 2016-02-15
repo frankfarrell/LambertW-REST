@@ -16,6 +16,8 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import static springfox.documentation.builders.PathSelectors.regex;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 
 /**
@@ -66,7 +68,9 @@ public class Application {
                 .select()
                 .paths(regex("/workorder.*"))
                 .build()
-                .pathMapping("/");
+                .pathMapping("/")
+                .directModelSubstitute(OffsetDateTime.class, String.class)
+                .directModelSubstitute(Duration.class, Double.class);
     }
 
     private ApiInfo apiInfo() {
