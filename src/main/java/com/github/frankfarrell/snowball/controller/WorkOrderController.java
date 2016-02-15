@@ -121,7 +121,7 @@ public class WorkOrderController {
     https://www.thoughtworks.com/insights/blog/rest-api-design-resource-modeling
      */
     @RequestMapping(
-            value = "",
+            value = "/statistics",
             method = RequestMethod.POST,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
