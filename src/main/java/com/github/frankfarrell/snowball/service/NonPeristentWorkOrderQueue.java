@@ -4,6 +4,8 @@ import com.github.frankfarrell.snowball.model.QueuedWorkOrder;
 import com.github.frankfarrell.snowball.model.WorkOrder;
 import com.github.frankfarrell.snowball.model.WorkOrderClass;
 import com.sun.corba.se.impl.ior.WireObjectKeyTemplate;
+import org.redisson.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -14,6 +16,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.SortedMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -25,7 +28,7 @@ import java.util.stream.IntStream;
  * Created by Frank on 12/02/2016.
  */
 @Service
-public class MockWorkOrderImpl implements WorkOrderQueue{
+public class NonPeristentWorkOrderQueue implements WorkOrderQueue{
 
     /*
     How to implement priority queue with all the features below?
@@ -34,22 +37,30 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
     4 Sorted Set of EntrySets, eg an Ordered Hash Map that is unique on key
      */
 
+    /*
+    TODO
+    Map<time ,id> sorted on time, from epoch.
+     */
+
     private List<WorkOrder> normalQueue;
     private List<WorkOrder> priorityQueue;
     private List<WorkOrder> vipQueue;
     private List<WorkOrder> managementQueue;
 
-    public MockWorkOrderImpl() {
+    @Autowired
+    public NonPeristentWorkOrderQueue(RedissonClient redisson) {
         normalQueue = new LinkedList<WorkOrder>();
         priorityQueue = new LinkedList<WorkOrder>();
         vipQueue = new LinkedList<WorkOrder>();
         managementQueue = new LinkedList<WorkOrder>();
     }
 
+
     /**
      * @return All WorkOrders Sorted By Current Priority
      * Returns id, time of entry, time in queue, position in queue, Type Of Order
      */
+    @Override
     public List<QueuedWorkOrder> getAllWorkOrders(){
 
         /*
@@ -80,13 +91,15 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
     //private List<QueuedWorkOrder> sortWorkOrders(List<WorkOrder> orders, OffsetDateTime currentTime){
     //}
 
-    public void removeWorkOrder(long id){
+    @Override
+    public void removeWorkOrder(Long id){
         List<WorkOrder> queue = getQueueForId(id);
 
         queue = queue.stream().filter(workOrder -> workOrder.getId() != id).collect(Collectors.toList());
     }
 
-    public QueuedWorkOrder getWorkOrder(long id){
+    @Override
+    public QueuedWorkOrder getWorkOrder(Long id){
 
         List<WorkOrder> queue = getQueueForId(id);
         //TODO find item in the queue
@@ -95,6 +108,7 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
 
     //TODO Split this out into methods to be reused
     //Eg get lazy stream order
+    @Override
     public WorkOrder popWorkOrder(){
         WorkOrder nextWorkOrder;
         if(managementQueue.size() > 0){
@@ -136,6 +150,7 @@ public class MockWorkOrderImpl implements WorkOrderQueue{
 
     }
 
+    @Override
     public QueuedWorkOrder pushWorkOrder(WorkOrder workOrder){
 
         List<WorkOrder> queue = getQueueForId(workOrder.getId());

@@ -36,7 +36,7 @@ public class StatisticsService {
                 .getAllWorkOrders()
                 .stream()
                 .mapToLong( order ->
-                        order.getDurationInQueue().getSeconds()
+                        order.getDurationInQueue()
                 ).average()
                 .getAsDouble();
     }

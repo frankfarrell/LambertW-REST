@@ -12,9 +12,9 @@ public interface WorkOrderQueue {
 
     List<QueuedWorkOrder> getAllWorkOrders();
 
-    QueuedWorkOrder getWorkOrder(long id);
+    QueuedWorkOrder getWorkOrder(Long id);
 
-    void removeWorkOrder(long id);
+    void removeWorkOrder(Long id);
 
     WorkOrder popWorkOrder();
 

@@ -1,9 +1,12 @@
 package com.github.frankfarrell.snowball;
 
 import com.github.frankfarrell.snowball.controller.WorkOrderController;
-import com.github.frankfarrell.snowball.service.MockWorkOrderImpl;
+import com.github.frankfarrell.snowball.service.DistributedWorkOrderQueue;
 import com.github.frankfarrell.snowball.service.WorkOrderQueue;
 import com.github.frankfarrell.snowball.service.statistics.StatisticsService;
+import org.redisson.Config;
+import org.redisson.Redisson;
+import org.redisson.RedissonClient;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
@@ -56,8 +59,15 @@ public class Application {
     }
 
     @Bean
-    public WorkOrderQueue workOrderQueue(){
-        return new MockWorkOrderImpl();
+    public WorkOrderQueue workOrderQueue(RedissonClient redisson){
+        return new DistributedWorkOrderQueue(redisson);
+    }
+
+    @Bean
+    public RedissonClient redisson(){
+        Config config = new Config();
+        config.useSingleServer().setAddress("localhost:6379");//TODO How Does Heroku set this up?
+        return Redisson.create(config);
     }
 
     @Bean
