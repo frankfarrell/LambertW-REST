@@ -19,6 +19,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import static springfox.documentation.builders.PathSelectors.regex;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -53,14 +54,24 @@ public class Application {
         return new WorkOrderController(workOrderQueue, statisticsService);
     }
 
+    /*
+    Inject Clock Dependency.
+    Enables easier unit testing, eg with Clock.fixed()
+    Decouples PriorityQueue from Clock implementation
+     */
+    @Bean
+    public Clock clock(){
+        return Clock.systemUTC();
+    }
+
     @Bean
     public StatisticsService statisticsService(WorkOrderQueue workOrderQueue){
         return new StatisticsService(workOrderQueue);
     }
 
     @Bean
-    public WorkOrderQueue workOrderQueue(RedissonClient redisson){
-        return new DistributedWorkOrderQueue(redisson);
+    public WorkOrderQueue workOrderQueue(RedissonClient redisson, Clock clock){
+        return new DistributedWorkOrderQueue(redisson, clock);
     }
 
     @Bean
