@@ -19,6 +19,8 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import static springfox.documentation.builders.PathSelectors.regex;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -75,9 +77,10 @@ public class Application {
     }
 
     @Bean
-    public RedissonClient redisson(){
+    public RedissonClient redisson() throws URISyntaxException{
         Config config = new Config();
-        config.useSingleServer().setAddress(System.getenv("REDIS_URL"));//TODO How Does Heroku set this up?
+        URI redisURI = new URI(System.getenv("REDIS_URL"));
+        config.useSingleServer().setAddress(redisURI.toString());
         return Redisson.create(config);
     }
 
