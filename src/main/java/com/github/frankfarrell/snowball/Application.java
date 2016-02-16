@@ -77,7 +77,7 @@ public class Application {
     @Bean
     public RedissonClient redisson(){
         Config config = new Config();
-        config.useSingleServer().setAddress("localhost:6379");//TODO How Does Heroku set this up?
+        config.useSingleServer().setAddress(System.getenv("REDIS_URL"));//TODO How Does Heroku set this up?
         return Redisson.create(config);
     }
 
