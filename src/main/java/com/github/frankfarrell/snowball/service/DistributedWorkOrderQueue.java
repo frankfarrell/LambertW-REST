@@ -48,7 +48,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     private final OffsetDateTime EPOCH = OffsetDateTime.ofInstant(Instant.EPOCH, ZoneId.of("UTC"));
 
     private final RedissonClient redisson;
-    private final Clock clock;
+
+    protected Clock clock;
 
     @Autowired
     public DistributedWorkOrderQueue(RedissonClient redisson,Clock clock) {
@@ -429,6 +430,13 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         } while (n <= N);
 
         return f;
+    }
+
+    /*
+    Hook to Clock for unit testing
+     */
+    protected void setClock(Clock clock) {
+        this.clock = clock;
     }
 
 }

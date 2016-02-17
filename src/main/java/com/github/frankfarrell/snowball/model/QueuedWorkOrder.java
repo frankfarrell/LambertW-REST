@@ -22,8 +22,8 @@ import java.time.ZonedDateTime;
  */
 public class QueuedWorkOrder extends WorkOrder{
 
-    private long positionInQueue;
-    private long durationInQueue; //In seconds
+    private Long positionInQueue;
+    private Long durationInQueue; //In seconds
     private WorkOrderClass workOrderClass;
 
     public QueuedWorkOrder(long id, OffsetDateTime timeStamp, long durationInQueue, long positionInQueue, WorkOrderClass workOrderClass) {
@@ -45,4 +45,26 @@ public class QueuedWorkOrder extends WorkOrder{
         return workOrderClass;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+
+        QueuedWorkOrder that = (QueuedWorkOrder) o;
+
+        if (!positionInQueue.equals(that.positionInQueue)) return false;
+        if (!durationInQueue.equals(that.durationInQueue)) return false;
+        return workOrderClass == that.workOrderClass;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + positionInQueue.hashCode();
+        result = 31 * result + durationInQueue.hashCode();
+        result = 31 * result + workOrderClass.hashCode();
+        return result;
+    }
 }

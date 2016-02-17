@@ -31,4 +31,23 @@ public class WorkOrder {
     public long getId() {
         return id;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        WorkOrder workOrder = (WorkOrder) o;
+
+        if (id != workOrder.id) return false;
+        return timeStamp.equals(workOrder.timeStamp);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (int) (id ^ (id >>> 32));
+        result = 31 * result + timeStamp.hashCode();
+        return result;
+    }
 }

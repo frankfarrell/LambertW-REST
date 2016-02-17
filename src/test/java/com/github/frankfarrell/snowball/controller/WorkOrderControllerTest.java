@@ -72,7 +72,7 @@ public class WorkOrderControllerTest {
 
         when(mockWorkOrderQueue.pushWorkOrder(any(WorkOrder.class))).thenThrow(new AlreadyExistsException("id", 123));
 
-        mvc.perform(MockMvcRequestBuilders.put(ROOT_URL + "/123")
+        mvc.perform(MockMvcRequestBuilders.put(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType("application/json")
                 .content("{\"id\": 123,\"timeStamp\":\"2016-02-12T03:21:55+00:00\"}"))
