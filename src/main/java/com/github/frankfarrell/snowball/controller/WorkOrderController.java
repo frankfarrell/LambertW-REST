@@ -2,7 +2,7 @@ package com.github.frankfarrell.snowball.controller;
 
 import com.github.frankfarrell.snowball.model.QueuedWorkOrder;
 import com.github.frankfarrell.snowball.model.WorkOrder;
-import com.github.frankfarrell.snowball.model.statistics.StatisticalSummary;
+import com.github.frankfarrell.snowball.model.statistics.QueueStatistics;
 import com.github.frankfarrell.snowball.model.statistics.StatisticalSummaryRequest;
 import com.github.frankfarrell.snowball.service.WorkOrderQueue;
 import com.github.frankfarrell.snowball.service.statistics.StatisticsService;
@@ -152,10 +152,10 @@ public class WorkOrderController {
             method = RequestMethod.POST,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<StatisticalSummary> getWorkOrderStatistics(@RequestBody StatisticalSummaryRequest statisticalSummaryRequest){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
+    public @ResponseBody ResponseEntity<QueueStatistics> getWorkOrderStatistics(@RequestBody StatisticalSummaryRequest statisticalSummaryRequest){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
 
-        StatisticalSummary statisticalSummary = statisticsService.getStatistics(statisticalSummaryRequest);
-        return new ResponseEntity<StatisticalSummary>(statisticalSummary, HttpStatus.OK);
+        QueueStatistics statisticalSummary = statisticsService.getStatistics(statisticalSummaryRequest);
+        return new ResponseEntity<QueueStatistics>(statisticalSummary, HttpStatus.OK);
     }
 
 }
