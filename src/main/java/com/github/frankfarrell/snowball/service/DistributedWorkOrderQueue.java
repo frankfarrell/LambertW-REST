@@ -173,7 +173,51 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         Get top from each queue
         Pick one that is first according to sorting
          */
-        return null;
+
+        if(managementQueue.size()>0){
+            //TODO Not threadsafe, needs to be done in Transaction, eg Lua Script?
+            Collection<ScoredEntry<Long>> x = managementQueue.entryRange(0, 0);
+            managementQueue.removeRangeByRank(0,0);
+            ArrayList<ScoredEntry<Long>> y = new ArrayList<>();
+            y.addAll(x);
+            ScoredEntry<Long> z = y.get(0);
+            return new WorkOrder(z.getValue(), EPOCH.plus(z.getScore().longValue(), ChronoUnit.SECONDS));
+        }
+        else{
+            //TODO This works but has null pointers etc
+            Collection<ScoredEntry<Long>> vip = vipQueue.entryRange(0, 0);
+            ArrayList<ScoredEntry<Long>> vipList = new ArrayList<>();
+            vipList.addAll(vip);
+            ScoredEntry<Long> vipValue = vipList.get(0);
+            Double vipRank = getPriorityFunctionForClass(WorkOrderClass.VIP).apply(vipValue.getScore());
+
+            Collection<ScoredEntry<Long>> priority = priorityQueue.entryRange(0, 0);
+            ArrayList<ScoredEntry<Long>> priorityList = new ArrayList<>();
+            vipList.addAll(priority);
+            ScoredEntry<Long> priorityValue = vipList.get(0);
+            Double priorityRank = getPriorityFunctionForClass(WorkOrderClass.PRIORITY).apply(priorityValue.getScore());
+
+            Collection<ScoredEntry<Long>> normal = normalQueue.entryRange(0, 0);
+            ArrayList<ScoredEntry<Long>> normalList = new ArrayList<>();
+            vipList.addAll(normal);
+            ScoredEntry<Long> normalValue = vipList.get(0);
+            Double normalRank = getPriorityFunctionForClass(WorkOrderClass.NOMRAL).apply(priorityValue.getScore());
+
+            WorkOrder nextWorkOrder;
+            if(vipRank >= priorityRank && vipRank >= normalRank){
+                nextWorkOrder = new WorkOrder(vipValue.getValue(), EPOCH.plus(vipValue.getScore().longValue(), ChronoUnit.SECONDS));
+                vipQueue.removeRangeByRank(0,0);
+            }
+            else if(priorityRank >= vipRank  && priorityRank >= normalRank){
+                nextWorkOrder = new WorkOrder(priorityValue.getValue(), EPOCH.plus(priorityValue.getScore().longValue(), ChronoUnit.SECONDS));
+                normalQueue.removeRangeByRank(0,0);
+            }
+            else{
+                nextWorkOrder = new WorkOrder(normalValue.getValue(), EPOCH.plus(normalValue.getScore().longValue(), ChronoUnit.SECONDS));
+                normalQueue.removeRangeByRank(0,0);
+            }
+            return nextWorkOrder;
+        }
     }
 
     @Override
@@ -188,7 +232,6 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
             queue.add(EPOCH.until(workOrder.getTimeStamp(), ChronoUnit.SECONDS), workOrder.getId());
             return new QueuedWorkOrder(workOrder.getId(), workOrder.getTimeStamp(), 0, getPositionForId(workOrder.getId()), getWorkOrderClass(workOrder.getId()));
         }
-
     }
 
     private OffsetDateTime getCurrentTime(){
@@ -267,7 +310,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         final Long priorityQueueSizeForRange = getQueueSizeInRange(WorkOrderClass.PRIORITY, durationInQueue, now);
         final Long normalQueueSizeForRange = getQueueSizeInRange(WorkOrderClass.NOMRAL, durationInQueue, now);
 
-        return managementQueueSize + vipQueueSizeForRange + priorityQueueSizeForRange + normalQueueSizeForRange;
+        //How many items are ahead of this in the Queue, minus 1 offset
+        return managementQueueSize + vipQueueSizeForRange + priorityQueueSizeForRange + normalQueueSizeForRange -1;
     }
 
     /*
@@ -287,7 +331,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         Long startScoreForClass = EPOCH.until(startTime, ChronoUnit.SECONDS);
 
         return new Long(getQueueForClass(orderClass)
-                .valueRange(0, true, startScoreForClass, false)
+                .valueRange(0, true, startScoreForClass, true)
                 .size());
     }
 
@@ -298,6 +342,21 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     and all values in Prioirity between 0 - 3*log(3) seconds
     and all values in VIP between 0-2*3*log(3) seconds
     */
+    private Function<Double, Double> getInversePriorityFunctionForClass(WorkOrderClass orderClass){
+        switch(orderClass) {
+            case MANAGEMENT_OVERRIDE:
+                throw new IllegalStateException();
+            case VIP:
+                return value -> lambertWFunction(value)/2;
+            case PRIORITY:
+                return value -> lambertWFunction(value);
+            case NOMRAL:
+                return value -> value;
+            default:
+                throw new IllegalStateException();
+        }
+    }
+
     private Function<Double, Double> getPriorityFunctionForClass(WorkOrderClass orderClass){
         switch(orderClass) {
             case MANAGEMENT_OVERRIDE:
@@ -342,5 +401,34 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
+    /**
+     * Lambert W(z) funtion - implemented using Lagrange Inversion Theorem
+     * Gives inverse of nlogn
+     * for |z| < 1/e
+     * @param z
+     * @return
+     */
+    public double lambertWFunction(double z)
+    {
+        double S = 0.0;
+        for (int k=1; k <= 1000; k++)
+        {
+            S += (StrictMath.pow(-k, k-1) * StrictMath.pow(z,k)) / factorial(k);
+        }
+        return S;
+    }
+
+    public double factorial(int N)
+    {
+        int n = 1;
+        double f = 1.0;
+        do
+        {
+            f *= n;
+            n++;
+        } while (n <= N);
+
+        return f;
+    }
 
 }

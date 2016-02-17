@@ -122,12 +122,12 @@ public class WorkOrderController {
     }
 
     @RequestMapping(
-            value = "{id}",
+            value = "",
             method = RequestMethod.PUT,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@PathVariable long id, @RequestBody WorkOrder workder){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
-        QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(workder);
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@RequestBody WorkOrder order){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
+        QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(order);
         return new ResponseEntity<QueuedWorkOrder>(workOrder, HttpStatus.OK);
     }
 

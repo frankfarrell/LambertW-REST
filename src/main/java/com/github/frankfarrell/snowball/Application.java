@@ -79,8 +79,8 @@ public class Application {
     @Bean
     public RedissonClient redisson() throws URISyntaxException{
         Config config = new Config();
-        URI redisURI = new URI(System.getenv("REDIS_URL"));
-        config.useSingleServer().setAddress(redisURI.toString());
+        //URI redisURI = new URI(System.getenv("REDIS_URL"));
+        config.useSingleServer().setAddress("localhost:6379");
         return Redisson.create(config);
     }
 
