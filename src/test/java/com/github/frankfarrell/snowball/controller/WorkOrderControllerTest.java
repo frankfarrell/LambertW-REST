@@ -78,4 +78,24 @@ public class WorkOrderControllerTest {
                 .content("{\"id\": 123,\"timeStamp\":\"2016-02-12T03:21:55+00:00\"}"))
                 .andExpect(status().isConflict());
     }
+
+    @Test
+    public void putWorkOrderThatHasNegativeId() throws Exception {
+
+        mvc.perform(MockMvcRequestBuilders.put(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType("application/json")
+                .content("{\"id\": -123,\"timeStamp\":\"2016-02-12T03:21:55+00:00\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void putWorkOrderThatHasInvalidDateFormat() throws Exception {
+
+        mvc.perform(MockMvcRequestBuilders.put(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType("application/json")
+                .content("{\"id\": -123,\"timeStamp\":\"2nd March 1990\"}"))
+                .andExpect(status().isBadRequest());
+    }
 }

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModelProperty;
 
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 
@@ -12,7 +14,9 @@ import java.time.ZonedDateTime;
  */
 public class WorkOrder {
 
-    private final long id;
+    @Min(value=1)
+    @Max(value= Long.MAX_VALUE) //2^63-1 or 9223372036854775807
+    private final Long id;
     private final OffsetDateTime timeStamp;
 
     //Uses These annotations because object is immutable and setters are not available
@@ -28,7 +32,7 @@ public class WorkOrder {
     }
 
     @ApiModelProperty(notes = "The id of the user who place the order", required = true)
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

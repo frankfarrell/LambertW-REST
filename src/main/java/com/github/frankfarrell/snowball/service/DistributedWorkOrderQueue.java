@@ -165,6 +165,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     @Override
     public void removeWorkOrder(Long id) {
         final RScoredSortedSet<Long> queue = getQueueForId(id);
+
+        //TODO Should we Check it exists first?
         queue.remove(id);
     }
 

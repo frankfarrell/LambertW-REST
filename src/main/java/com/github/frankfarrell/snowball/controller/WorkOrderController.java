@@ -64,7 +64,7 @@ public class WorkOrderController {
             @ApiResponse(code = 200, message = "Success", response = QueuedWorkOrder.class),
             @ApiResponse(code = 404, message = "Not Found"),
             @ApiResponse(code = 500, message = "Failure")})
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> getWorkOrder(@PathVariable @Valid long id){//TODO validate all ids
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> getWorkOrder(@PathVariable Long id){
 
         QueuedWorkOrder workOrder = workOrderQueue.getWorkOrder(id);
 
@@ -126,9 +126,9 @@ public class WorkOrderController {
             method = RequestMethod.PUT,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@RequestBody WorkOrder order){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@RequestBody @Valid WorkOrder order){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
         QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(order);
-        return new ResponseEntity<QueuedWorkOrder>(workOrder, HttpStatus.OK);
+        return new ResponseEntity<QueuedWorkOrder>(workOrder, HttpStatus.CREATED);
     }
 
     /*
