@@ -7,6 +7,7 @@ import com.github.frankfarrell.snowball.service.statistics.StatisticsService;
 import org.redisson.Config;
 import org.redisson.Redisson;
 import org.redisson.RedissonClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
@@ -76,11 +77,35 @@ public class Application {
         return new DistributedWorkOrderQueue(redisson, clock);
     }
 
+    @Value("${spring.redis.port}")
+    private int redisPort;
+
+    @Value("${spring.redis.address}")
+    private String redisAddress;
+
+    @Value("${spring.redis.heroku}")
+    private Boolean redisHeroku;
+
     @Bean
     public RedissonClient redisson() throws URISyntaxException{
+        /*
+        Three Possibilities here
+        Redis Running on Local,etc
+        Redis Running Embedded
+        Redis Running Heroku
+         */
         Config config = new Config();
-        //URI redisURI = new URI(System.getenv("REDIS_URL"));
-        config.useSingleServer().setAddress("localhost:6379");
+
+        //Unfortunately this is the only way to get it to work
+        if(redisHeroku){
+            String redisURI = System.getenv("REDIS_URL");
+            redisURI = redisURI.replaceFirst("redis://", "");
+            config.useSingleServer().setAddress(redisURI);
+        }
+        else{
+            config.useSingleServer().setAddress(redisAddress +":"+ redisPort);
+        }
+
         return Redisson.create(config);
     }
 

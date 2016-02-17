@@ -1,1 +1,1 @@
-web: java -Dserver.port=$PORT -jar build/libs/SNOWBALL-MAGIC-19851014-1.0-SNAPSHOT.jar
+web: java -Dserver.port=$PORT -jar build/libs/SNOWBALL-MAGIC-19851014-1.0-SNAPSHOT.jar --heroku=true
