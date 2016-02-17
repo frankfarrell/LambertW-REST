@@ -9,6 +9,8 @@ import com.github.frankfarrell.snowball.service.WorkOrderQueue;
 import io.swagger.models.auth.In;
 import org.redisson.RedissonClient;
 import org.redisson.client.protocol.ScoredEntry;
+import org.redisson.core.RLock;
+import org.redisson.core.RReadWriteLock;
 import org.redisson.core.RScoredSortedSet;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -21,6 +23,7 @@ import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -68,22 +71,20 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
     @Override
     public List<QueuedWorkOrder> getAllWorkOrders() {
+
         /*
         Get all queues.
         Map through function -> getComparatorForClass
         Sort All
          */
-
         final OffsetDateTime now = getCurrentTime();
 
         List<ScoredEntry<Long>> managementWorkOrders = new ArrayList<>();
 
         managementWorkOrders.addAll(getAllInQueue(managementQueue));
 
-        //TODO Check anything here
-
         //First get Management Queue,
-        List<QueuedWorkOrder> managementOrders = IntStream.range(0, managementWorkOrders.size())
+        List<QueuedWorkOrder> allOrders = IntStream.range(0, managementWorkOrders.size())
                 .mapToObj(index ->{
                     ScoredEntry<Long> order = managementWorkOrders.get(index);
                     return new QueuedWorkOrder(order.getValue(),
@@ -96,7 +97,6 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         //Group all the rest together.
         //IntStream.range(managementWorkOrders.size() , restOfThem - 1)
         //And sort using function and now
-
         //This is not he optimal solution,
 
         List<ScoredEntry<Long>> nonManagementWorkOrders = new ArrayList<>();
@@ -137,8 +137,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
                 }).collect(Collectors.toList());
 
 
-        managementOrders.addAll(nonManagementOrders);
-        return managementOrders;
+        allOrders.addAll(nonManagementOrders);
+        return allOrders;
     }
 
 
@@ -224,7 +224,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     @Override
     public QueuedWorkOrder pushWorkOrder(WorkOrder workOrder) {
 
-        final RScoredSortedSet<Long> queue = getQueueForId(workOrder.getId());
+        final RScoredSortedSet<Long> queue = getQueueForClass(getWorkOrderClass(workOrder.getId()));
 
         if(queue.contains(workOrder.getId())){
             throw new AlreadyExistsException("id", workOrder.getId());
@@ -238,7 +238,6 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     private OffsetDateTime getCurrentTime(){
         return OffsetDateTime.now(clock);
     }
-
 
     //TODO If sets dont exist anymore do we need to create them?
     //Why ? Last remove deletes the set
@@ -306,31 +305,40 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         final Double durationInQueue = EPOCH.until(now, ChronoUnit.SECONDS) - rangeScore;
 
 
-        final Long managementQueueSize = new Long(managementQueue.size());
-        final Long vipQueueSizeForRange = getQueueSizeInRange(WorkOrderClass.VIP, durationInQueue, now);
-        final Long priorityQueueSizeForRange = getQueueSizeInRange(WorkOrderClass.PRIORITY, durationInQueue, now);
-        final Long normalQueueSizeForRange = getQueueSizeInRange(WorkOrderClass.NOMRAL, durationInQueue, now);
 
-        //How many items are ahead of this in the Queue, minus 1 offset
-        return managementQueueSize + vipQueueSizeForRange + priorityQueueSizeForRange + normalQueueSizeForRange -1;
+        if (getWorkOrderClass(id).equals(WorkOrderClass.MANAGEMENT_OVERRIDE)) {
+            return getQueueSizeInRange(WorkOrderClass.MANAGEMENT_OVERRIDE ,WorkOrderClass.MANAGEMENT_OVERRIDE, durationInQueue, now) -1;
+        }
+        else{
+            final Long managementQueueSize = new Long(managementQueue.size());
+            final Long vipQueueSizeForRange = getQueueSizeInRange(getWorkOrderClass(id), WorkOrderClass.VIP, durationInQueue, now);
+            final Long priorityQueueSizeForRange = getQueueSizeInRange(getWorkOrderClass(id), WorkOrderClass.PRIORITY, durationInQueue, now);
+            final Long normalQueueSizeForRange = getQueueSizeInRange(getWorkOrderClass(id), WorkOrderClass.NOMRAL, durationInQueue, now);
+
+            //How many items are ahead of this in the Queue, minus 1 offset
+            return managementQueueSize + vipQueueSizeForRange + priorityQueueSizeForRange + normalQueueSizeForRange -1;
+        }
     }
 
     /*
+    NB This is an approximate method that gives a very accurate indication of the position of a given item in the queue
+
     Calculate queue entries higher than given duration.
-    Apply Priority Function
-    Get how long ago that is
-    Get the time frmo EPOCH until that time
+    Get the time from EPOCH until that time
     => Score in ScoredSortedSet
      */
-    protected Long getQueueSizeInRange(WorkOrderClass orderClass, Double durationInQueue, OffsetDateTime now){
+    protected Long getQueueSizeInRange(WorkOrderClass orderClassOfValue, WorkOrderClass orderClassCompared, Double durationInQueue, OffsetDateTime now){
 
-        Double durationAsProductOfPrioirityFunction = getInversePriorityFunctionForClass(orderClass).apply(durationInQueue);
+        //Caculate priority function for current value
+        //Calculate inverse priority value other queues would need to achieve to out rank/equal that
+        Double durationAsProductOfPrioirityFunction = getInversePriorityFunctionForClass(orderClassCompared)
+                .apply(getPriorityFunctionForClass(orderClassOfValue).apply(durationInQueue));
 
         OffsetDateTime startTime = now.minus(durationAsProductOfPrioirityFunction.longValue(), ChronoUnit.SECONDS);
 
         Long startScoreForClass = EPOCH.until(startTime, ChronoUnit.SECONDS);
 
-        return new Long(getQueueForClass(orderClass)
+        return new Long(getQueueForClass(orderClassCompared)
                 .valueRange(0, true, startScoreForClass, true)
                 .size());
     }
@@ -345,9 +353,9 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     protected Function<Double, Double> getInversePriorityFunctionForClass(WorkOrderClass orderClass){
         switch(orderClass) {
             case MANAGEMENT_OVERRIDE:
-                throw new IllegalStateException();
+                return value -> value; //This is only for case of comparing management with management
             case VIP:
-                //https://en.wikipedia.org/wiki/Lambert_W_function#Example_4
+                // https://en.wikipedia.org/wiki/Lambert_W_function#Example_4
                 return value -> Math.max(4, Math.exp(lambertWFunction(value/2)));
             case PRIORITY:
                 return value -> Math.max(3, Math.exp(lambertWFunction(value)));
@@ -361,7 +369,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     protected Function<Double, Double> getPriorityFunctionForClass(WorkOrderClass orderClass){
         switch(orderClass) {
             case MANAGEMENT_OVERRIDE:
-                throw new IllegalStateException();
+                return value -> value;
             case VIP:
                 return value -> Math.max(4, 2*value* Math.log(value));
             case PRIORITY:
@@ -402,29 +410,59 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
+    /*
+    From https://gist.github.com/cab1729/1318030
+     */
     public static double lambertWFunction(double z)
     {
         double S = 0.0;
         for (int n=1; n <= 100; n++)
         {
             double Se = S * StrictMath.pow(StrictMath.E, S);
-            double S1e = (S+1) *
-                    StrictMath.pow(StrictMath.E, S);
+            double S1e = (S+1) * StrictMath.pow(StrictMath.E, S);
+
             if (1E-12 > StrictMath.abs((z-Se)/S1e))
             {
                 return S;
             }
-            S -=
-                    (Se-z) / (S1e - (S+2) * (Se-z) / (2*S+2));
+            S -= (Se-z) / (S1e - (S+2) * (Se-z) / (2*S+2));
         }
         return S;
     }
 
     /*
     Hook to Clock for unit testing
+    Needed because Clock is immutable
      */
     protected void setClock(Clock clock) {
         this.clock = clock;
     }
 
+
+    /*
+     * TODO Implement ReadLock, WriteLockAspects that acquire locks on queues as necessary
+     *
+     * https://github.com/rmalchow/lock-aspect/blob/master/src/main/java/com/skjlls/aspects/lock/impl/LockAspect.java
+      * Eg
+      * @ReadLock(queues=[MANAGEMENT, VIP, PRIORITY, NORMAL])
+      * @WriteLock(queues=[MANAGEMENT])
+     * @param orderClass
+     * @return
+     */
+    //If I want this to be distributed need ReadWriteLocks on the Queues:
+    public RLock getReadLock(WorkOrderClass orderClass){
+
+        RReadWriteLock readWritelock = this.redisson.getReadWriteLock(getLockKeyForClass(orderClass));
+        return readWritelock.readLock();
+
+    }
+
+    private String getLockKeyForClass(WorkOrderClass orderClass){
+        switch(orderClass){
+            case MANAGEMENT_OVERRIDE:
+                return "managementLock";
+            default:
+                return null;
+        }
+    }
 }
