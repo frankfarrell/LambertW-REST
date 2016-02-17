@@ -1,6 +1,7 @@
 package com.github.frankfarrell.snowball.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -22,9 +23,11 @@ import java.time.ZonedDateTime;
  */
 public class QueuedWorkOrder extends WorkOrder{
 
-    private Long positionInQueue;
-    private Long durationInQueue; //In seconds
-    private WorkOrderClass workOrderClass;
+    private final Long positionInQueue;
+    private final Long durationInQueue; //In seconds
+    private final WorkOrderClass workOrderClass;
+
+    private Double rank;
 
     public QueuedWorkOrder(long id, OffsetDateTime timeStamp, long durationInQueue, long positionInQueue, WorkOrderClass workOrderClass) {
         super(id, timeStamp);
@@ -43,6 +46,15 @@ public class QueuedWorkOrder extends WorkOrder{
 
     public WorkOrderClass getWorkOrderClass() {
         return workOrderClass;
+    }
+
+    @JsonIgnore
+    public Double getRank() {
+        return rank;
+    }
+
+    public void setRank(Double rank) {
+        this.rank = rank;
     }
 
     @Override
@@ -66,5 +78,17 @@ public class QueuedWorkOrder extends WorkOrder{
         result = 31 * result + durationInQueue.hashCode();
         result = 31 * result + workOrderClass.hashCode();
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "QueuedWorkOrder{" +
+                "id="+ getId() +
+                "timeStamp+"+getTimeStamp().toString()+
+                "positionInQueue=" + positionInQueue +
+                ", durationInQueue=" + durationInQueue +
+                ", workOrderClass=" + workOrderClass +
+                ", rank=" + rank +
+                '}';
     }
 }

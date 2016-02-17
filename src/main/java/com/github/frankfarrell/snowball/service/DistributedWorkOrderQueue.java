@@ -20,9 +20,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAmount;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -170,56 +168,90 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         queue.remove(id);
     }
 
+    private Long getDurationInQueue(Double score){
+        return EPOCH.until(getCurrentTime(), ChronoUnit.SECONDS) - score.longValue();
+    }
+
+    private OffsetDateTime getOriginalTimestamp(Double score){
+        return EPOCH.plus(score.longValue(), ChronoUnit.SECONDS);
+    }
+
     @Override
-    public WorkOrder popWorkOrder() {
+    public Optional<QueuedWorkOrder> popWorkOrder() {
         /*
         Get top from each queue
         Pick one that is first according to sorting
          */
 
         if(managementQueue.size()>0){
-            //TODO Not threadsafe, needs to be done in Transaction, eg Lua Script?
-            Collection<ScoredEntry<Long>> x = managementQueue.entryRange(0, 0);
+
+            Collection<ScoredEntry<Long>> asCollection = managementQueue.entryRange(0, 0);
+            ArrayList<ScoredEntry<Long>> asList = new ArrayList<>();
+            asList.addAll(asCollection);
+            ScoredEntry<Long> managementOrder = asList.get(0);
+            QueuedWorkOrder orderToPop = new QueuedWorkOrder(
+                    managementOrder.getValue(),
+                    getOriginalTimestamp(managementOrder.getScore()),
+                    getDurationInQueue(managementOrder.getScore()),
+                    0,
+                    WorkOrderClass.MANAGEMENT_OVERRIDE
+                    );
+
             managementQueue.removeRangeByRank(0,0);
-            ArrayList<ScoredEntry<Long>> y = new ArrayList<>();
-            y.addAll(x);
-            ScoredEntry<Long> z = y.get(0);
-            return new WorkOrder(z.getValue(), EPOCH.plus(z.getScore().longValue(), ChronoUnit.SECONDS));
+            return Optional.of(orderToPop);
         }
         else{
-            //TODO This works but has null pointers etc
-            Collection<ScoredEntry<Long>> vip = vipQueue.entryRange(0, 0);
-            ArrayList<ScoredEntry<Long>> vipList = new ArrayList<>();
-            vipList.addAll(vip);
-            ScoredEntry<Long> vipValue = vipList.get(0);
-            Double vipRank = getPriorityFunctionForClass(WorkOrderClass.VIP).apply(vipValue.getScore());
+            //Iterate over the three other WorkOrder Classes.
+            //Rank by Type and Sort by Rank
+            //Pick First
+            Optional<QueuedWorkOrder> topRankedValue = Arrays.asList(
+                            WorkOrderClass.VIP,
+                            WorkOrderClass.PRIORITY,
+                            WorkOrderClass.NOMRAL
+                    )
+                    .stream()
+                    .map(orderClass ->{
+                        RScoredSortedSet<Long> queue = getQueueForClass(orderClass);
+                        ArrayList<ScoredEntry<Long>> asList = new ArrayList<>();
+                        asList.addAll(queue.entryRange(0, 0));
+                        if(asList.size()>0){
 
-            Collection<ScoredEntry<Long>> priority = priorityQueue.entryRange(0, 0);
-            ArrayList<ScoredEntry<Long>> priorityList = new ArrayList<>();
-            vipList.addAll(priority);
-            ScoredEntry<Long> priorityValue = vipList.get(0);
-            Double priorityRank = getPriorityFunctionForClass(WorkOrderClass.PRIORITY).apply(priorityValue.getScore());
+                            ScoredEntry<Long> value = asList.get(0);
+                            Long durationInQueue = getDurationInQueue(value.getScore());
+                            Double rank = getPriorityFunctionForClass(orderClass).apply(durationInQueue.doubleValue());
+                            QueuedWorkOrder workOrder = new QueuedWorkOrder(
+                                    value.getValue(),
+                                    getOriginalTimestamp(value.getScore()),
+                                    durationInQueue,
+                                    0,
+                                    orderClass);
 
-            Collection<ScoredEntry<Long>> normal = normalQueue.entryRange(0, 0);
-            ArrayList<ScoredEntry<Long>> normalList = new ArrayList<>();
-            vipList.addAll(normal);
-            ScoredEntry<Long> normalValue = vipList.get(0);
-            Double normalRank = getPriorityFunctionForClass(WorkOrderClass.NOMRAL).apply(priorityValue.getScore());
+                            workOrder.setRank(rank);
+                            //Pass down rank, id, timestamp, duration in queue
+                            return workOrder;
+                        }
+                        else{
+                            return null;
+                        }
+                    })
+                    .filter(value -> value != null)
+                    //Sort ascending to return top ranking
+                    .sorted(((x,y)-> {
+                        if(x.getRank() > y.getRank()){
+                            return -1;
+                        }
+                        if(y.getRank() >x.getRank()){
+                            return 1;
+                        }
+                        else return 0;
+                    }))
+                    .findFirst();
 
-            WorkOrder nextWorkOrder;
-            if(vipRank >= priorityRank && vipRank >= normalRank){
-                nextWorkOrder = new WorkOrder(vipValue.getValue(), EPOCH.plus(vipValue.getScore().longValue(), ChronoUnit.SECONDS));
-                vipQueue.removeRangeByRank(0,0);
+            if(topRankedValue.isPresent()){
+                getQueueForClass(topRankedValue.get().getWorkOrderClass()).removeRangeByRank(0,0);
             }
-            else if(priorityRank >= vipRank  && priorityRank >= normalRank){
-                nextWorkOrder = new WorkOrder(priorityValue.getValue(), EPOCH.plus(priorityValue.getScore().longValue(), ChronoUnit.SECONDS));
-                normalQueue.removeRangeByRank(0,0);
-            }
-            else{
-                nextWorkOrder = new WorkOrder(normalValue.getValue(), EPOCH.plus(normalValue.getScore().longValue(), ChronoUnit.SECONDS));
-                normalQueue.removeRangeByRank(0,0);
-            }
-            return nextWorkOrder;
+            return topRankedValue;
+
         }
     }
 
@@ -305,8 +337,6 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
         //How many seconds now after EPOCH, minus score
         final Double durationInQueue = EPOCH.until(now, ChronoUnit.SECONDS) - rangeScore;
-
-
 
         if (getWorkOrderClass(id).equals(WorkOrderClass.MANAGEMENT_OVERRIDE)) {
             return getQueueSizeInRange(WorkOrderClass.MANAGEMENT_OVERRIDE ,WorkOrderClass.MANAGEMENT_OVERRIDE, durationInQueue, now) -1;

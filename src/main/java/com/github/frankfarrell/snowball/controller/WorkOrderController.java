@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Created by Frank on 12/02/2016.
@@ -116,9 +117,15 @@ public class WorkOrderController {
             method = RequestMethod.POST,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<WorkOrder> popWorkOrder(){
-        WorkOrder workOrder = workOrderQueue.popWorkOrder();
-        return new ResponseEntity<WorkOrder>(workOrder, HttpStatus.OK);
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> popWorkOrder(){
+        Optional<QueuedWorkOrder> nextOrder = workOrderQueue.popWorkOrder();
+        if(nextOrder.isPresent()){
+            return new ResponseEntity<QueuedWorkOrder>(nextOrder.get(), HttpStatus.OK);
+        }
+        else{
+            //Request was understood, but no content to return
+            return new ResponseEntity<QueuedWorkOrder>(HttpStatus.NO_CONTENT);
+        }
     }
 
     @RequestMapping(

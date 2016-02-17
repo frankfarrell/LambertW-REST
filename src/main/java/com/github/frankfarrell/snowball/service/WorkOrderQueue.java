@@ -4,6 +4,7 @@ import com.github.frankfarrell.snowball.model.QueuedWorkOrder;
 import com.github.frankfarrell.snowball.model.WorkOrder;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Created by Frank on 12/02/2016.
@@ -16,7 +17,7 @@ public interface WorkOrderQueue {
 
     void removeWorkOrder(Long id);
 
-    WorkOrder popWorkOrder();
+    Optional<QueuedWorkOrder> popWorkOrder();
 
     QueuedWorkOrder pushWorkOrder(WorkOrder workOrder);
 
