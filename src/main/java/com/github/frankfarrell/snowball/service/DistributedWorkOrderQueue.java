@@ -322,10 +322,9 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     Get the time frmo EPOCH until that time
     => Score in ScoredSortedSet
      */
-    //TODO Fix bugs here
-    private Long getQueueSizeInRange(WorkOrderClass orderClass, Double durationInQueue, OffsetDateTime now){
+    protected Long getQueueSizeInRange(WorkOrderClass orderClass, Double durationInQueue, OffsetDateTime now){
 
-        Double durationAsProductOfPrioirityFunction = getPriorityFunctionForClass(orderClass).apply(durationInQueue);
+        Double durationAsProductOfPrioirityFunction = getInversePriorityFunctionForClass(orderClass).apply(durationInQueue);
 
         OffsetDateTime startTime = now.minus(durationAsProductOfPrioirityFunction.longValue(), ChronoUnit.SECONDS);
 
@@ -343,14 +342,15 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     and all values in Prioirity between 0 - 3*log(3) seconds
     and all values in VIP between 0-2*3*log(3) seconds
     */
-    private Function<Double, Double> getInversePriorityFunctionForClass(WorkOrderClass orderClass){
+    protected Function<Double, Double> getInversePriorityFunctionForClass(WorkOrderClass orderClass){
         switch(orderClass) {
             case MANAGEMENT_OVERRIDE:
                 throw new IllegalStateException();
             case VIP:
-                return value -> lambertWFunction(value)/2;
+                //https://en.wikipedia.org/wiki/Lambert_W_function#Example_4
+                return value -> Math.max(4, Math.exp(lambertWFunction(value/2)));
             case PRIORITY:
-                return value -> lambertWFunction(value);
+                return value -> Math.max(3, Math.exp(lambertWFunction(value)));
             case NOMRAL:
                 return value -> value;
             default:
@@ -358,7 +358,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
-    private Function<Double, Double> getPriorityFunctionForClass(WorkOrderClass orderClass){
+    protected Function<Double, Double> getPriorityFunctionForClass(WorkOrderClass orderClass){
         switch(orderClass) {
             case MANAGEMENT_OVERRIDE:
                 throw new IllegalStateException();
@@ -402,34 +402,22 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
-    /**
-     * Lambert W(z) funtion - implemented using Lagrange Inversion Theorem
-     * Gives inverse of nlogn
-     * for |z| < 1/e
-     * @param z
-     * @return
-     */
-    public double lambertWFunction(double z)
+    public static double lambertWFunction(double z)
     {
         double S = 0.0;
-        for (int k=1; k <= 1000; k++)
+        for (int n=1; n <= 100; n++)
         {
-            S += (StrictMath.pow(-k, k-1) * StrictMath.pow(z,k)) / factorial(k);
+            double Se = S * StrictMath.pow(StrictMath.E, S);
+            double S1e = (S+1) *
+                    StrictMath.pow(StrictMath.E, S);
+            if (1E-12 > StrictMath.abs((z-Se)/S1e))
+            {
+                return S;
+            }
+            S -=
+                    (Se-z) / (S1e - (S+2) * (Se-z) / (2*S+2));
         }
         return S;
-    }
-
-    public double factorial(int N)
-    {
-        int n = 1;
-        double f = 1.0;
-        do
-        {
-            f *= n;
-            n++;
-        } while (n <= N);
-
-        return f;
     }
 
     /*
