@@ -2,7 +2,6 @@ package com.github.frankfarrell.snowball.model.statistics;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sun.deploy.util.StringUtils;
 
 /**
  * Created by Frank on 17/02/2016.
