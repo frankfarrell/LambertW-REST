@@ -4,9 +4,11 @@ import com.github.frankfarrell.snowball.exceptions.AlreadyExistsException;
 import com.github.frankfarrell.snowball.exceptions.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.interceptor.CacheOperationInvoker;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.ServletRequestBindingException;
@@ -14,8 +16,10 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by Frank
@@ -43,7 +47,7 @@ public class RestExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(value= HttpStatus.NOT_FOUND)
     @ResponseBody
-    public NotFoundResponse handleMethodArgumentNotValid(HttpServletRequest req, NotFoundException ex) {
+    public NotFoundResponse handleNotFound(HttpServletRequest req, NotFoundException ex) {
 
         String errorURL = req.getRequestURL().toString();
 
@@ -74,7 +78,7 @@ public class RestExceptionHandler {
     @ExceptionHandler(AlreadyExistsException.class)
     @ResponseStatus(value= HttpStatus.CONFLICT)
     @ResponseBody
-    public AlreadyExistsResponse handleMethodArgumentNotValid(HttpServletRequest req, AlreadyExistsException ex) {
+    public AlreadyExistsResponse handleAlreadyExists(HttpServletRequest req, AlreadyExistsException ex) {
 
         String errorURL = req.getRequestURL().toString();
 
@@ -119,5 +123,24 @@ public class RestExceptionHandler {
             this.message = message;
         }
     }
-    //TODO Catch all 500
+
+    /*
+    Exception handlr for async calls
+    This is not ideal, but seems to be the only solution
+     */
+    @ExceptionHandler(ExecutionException.class)
+    public ResponseEntity handleMethodArgumentNotValid(HttpServletRequest req, ExecutionException ex) throws CacheOperationInvoker.ThrowableWrapper {
+
+        if(ex.getCause() instanceof AlreadyExistsException){
+            return new ResponseEntity(handleAlreadyExists(req, (AlreadyExistsException)ex.getCause()), HttpStatus.CONFLICT);
+        }
+        else if(ex.getCause() instanceof NotFoundException){
+            return new ResponseEntity(handleNotFound(req, (NotFoundException)ex.getCause()), HttpStatus.NOT_FOUND);
+        }
+        else{
+            return new ResponseEntity(new ExceptionMessageResponse("Something went wrong!"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+    }
+
 }
