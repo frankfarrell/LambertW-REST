@@ -55,3 +55,7 @@ dependencies {
 task stage {
     dependsOn build
 }
+
+bootRun {
+    systemProperties = System.properties
+}
