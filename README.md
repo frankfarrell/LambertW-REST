@@ -1,86 +1,66 @@
 [![Build Status](https://travis-ci.org/frankfarrell/SNOWBALL-MAGIC-19851014.svg?branch=master)](https://travis-ci.org/frankfarrell/SNOWBALL-MAGIC-19851014)
 
- * Endpoints
-GET
+# Intro
+
+* RESTful Priority queue backed by Redis.
+* The queue has 4 levels of priority, where priority is a function of time, eg nlogn
+
+# How to Use : REST Endpoints
+
+Try it out here swagger-ui.html
+
+*GET /workorder
+ Returns all work orders in Queue, with Id, Time of Insertion, Duration in Queue, Current Position in Queue and Type of Order
+
+*GET /workorder/{id} 404,
+Returns work order with this id, with Time of Insertion, Duration in Queue, Current Position in Queue and Type of Order
+
+*DELETE /workorder/{id}
+Deletes work order with this id from the queue
+
+*PUT
 /workorder
-GET 
-/workorder/{id} 404, 
-DELETE 
-/workorder/{id}
-POST
-/workorder/{id} 404, 409, 412
+Takes an Work Order with id and timestamp, which is placed in the queue.
+NB: Timestamp, and hence queue position is determined by the client.
 
-Average
-Either 
-GET
-/workorder/average
-POST 
-/workorder?average=true
-Why: Not getting any state of internal system, but a snapshot
+*POST
+/workorder
+Pops the top priority work order from the queue.
+NB, this was not implemented as GET as this is not an idempotent request
 
+*POST
+/workorder/statistics
+Takes an object {filters : [], }
+This is implemented as POST because it is snapshot aggregation of the state of the system
 
-* Questions 
+# How to Build and Run
 
-Peristent or not?
-Highly available
-Performance/throughput -> 80 a week
-Rest interface needs to be fast :
-Cache results?
+* To run quickly with an embedded redis :
+gradle bootRun --embedded=true --port=6999
+Launch ui at localhost:8080/swagger-ui.html
 
-* Tech Stack
+* To run with a locally running redis:
+gradle bootRun [Optional Argument--port=6379]
 
-Gradle
-Spring Boot
+* On each commit there is a build and deploy using Travis-Ci to Heroku:
+https://travis-ci.org/frankfarrell/SNOWBALL-MAGIC-19851014
+http://franksorder.herokuapp.com/swagger-ui.html
 
-* Implementation
+# Tech Stack
 
-Workhandler mock ,with interface
+* Spring Boot
+* Redisson Client for redis
 
-Priorirty Queue Class : Backed by Some Concurrent Data Structure? 
-Internally : 4 queues. LIFO for each. Use Stack.
+# Implementation
 
-Methods:
+* TODO
 
-Insert(WorkOrder)
-GetByIndex(index)
-GetById(id) : returns index too
-AverageTime : Mean wait time across all stacks. 
-Delete(id)
-Pop/Shift : pop top priority from queue -> Algorithm for determining, quick qay needed to calculate nlogn, 2nlog2n
+#  Tests:
+* WebControllerMVC
+* Unit
+* Spring Integration with embedded redis TODO
+* Performance Testing TODO
 
-* Simple Object
-
-On new request: 
-Id of user : 9,223,372,036,854,775,807 is the max value of signed int in 64-bit. Eg Long, 26^3-1
-We need a quick qay to calculate %3, %5 https://en.wikipedia.org/wiki/Exponentiation_by_squaring
-
-Timestamp: Current : Use Java8 Time. Handle Timezones etc
-If must be unique, only one work order per id
-What if order with earlier timestamp received for a given id?
-
- Workorder: 
- {
-	 id: 
-	 ISOTimestamp: 
- }
- 
-* Rest Details
-
-Error codes
-Spring REST Exception Handler
-
-* Peristence
-
-Or backed by Redis? If you include flag in start script
-Reddison, persistent across failures, can be distributed
-Or use rabbitMQ, pub sub mechanism : easy to plug in new work handler.
-
-Tests: 
-WebControllerMVC
-Unit
-Spring Integration
-
-Use Swagger and Javadocs
-
-Test Python Script for generating requests
-UI to show results? Yo angular
+# TODO
+* UI Client that simulates push and pop requests and show status of the queue. Order, wait time etc.
+* More queue statistics
