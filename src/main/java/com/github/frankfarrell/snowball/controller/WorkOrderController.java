@@ -99,22 +99,7 @@ public class WorkOrderController {
     Returns uri to a resource, hidden from other clients
     Client does a GET and a DELETE
     Server can implement time out, if client fails tricky
-
-    Google Task Queue solution: https://cloud.google.com/appengine/docs/java/taskqueue/rest/
-    Lease/Lock on Queue items
-
-    Amazon Simple Queue: http://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ChangeMessageVisibility.html
-    Chang Visiblity on resource -> Locking model
-
-    Azure uses GET -> Not idempotent
-
-    My solution:
-    POST /workorder
-    returns uri
-    Client works on it and deletes it
-    Why? Extensible for failover, timeouts in future
-
-     */
+    */
     @RequestMapping(
             value = "",
             method = RequestMethod.POST,
@@ -132,6 +117,11 @@ public class WorkOrderController {
         }
     }
 
+    /*
+    Clients pass Timestamp with request.
+    Timestamp must be of Zoned ISO Format: YYYY-MM-DDTHH:MM:SS+ZoneId
+    For instance 2016-02-12T03:21:55+00:00
+     */
     @RequestMapping(
             value = "",
             method = RequestMethod.PUT,
@@ -143,11 +133,8 @@ public class WorkOrderController {
     }
 
     /*
-    Average wait time
-    GET /average ?
-    Simple, easy to understand. But not idempotent or representation of a state
-    or
-    POST / {resources: TYPE, statistics: average/variance, max, min, etc}
+    Uses POST as operation not a representation of state
+    See:
     http://stackoverflow.com/questions/430809/rest-interface-for-finding-average
     https://www.thoughtworks.com/insights/blog/rest-api-design-resource-modeling
      */
@@ -156,7 +143,7 @@ public class WorkOrderController {
             method = RequestMethod.POST,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueueStatistics> getWorkOrderStatistics(@RequestBody StatisticalSummaryRequest statisticalSummaryRequest){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
+    public @ResponseBody ResponseEntity<QueueStatistics> getWorkOrderStatistics(@RequestBody StatisticalSummaryRequest statisticalSummaryRequest){
 
         QueueStatistics statisticalSummary = statisticsService.getStatistics(statisticalSummaryRequest);
         return new ResponseEntity<QueueStatistics>(statisticalSummary, HttpStatus.OK);

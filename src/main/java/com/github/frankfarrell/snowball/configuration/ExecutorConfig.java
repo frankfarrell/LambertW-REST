@@ -22,8 +22,22 @@ import java.util.concurrent.Executor;
 @EnableAsync
 public class ExecutorConfig {
 
+    /*
+    Push and Pop/Remove operations should be independent
+
+    queue.add is atomic operation
+     */
     @Bean(name = "queueWriteTaskExecutor")
     public Executor threadPoolTaskExecutor() {
+
+        ThreadPoolTaskExecutor writeExecutor = new ThreadPoolTaskExecutor();
+        writeExecutor.setMaxPoolSize(1);
+        return writeExecutor;
+
+    }
+
+    @Bean(name = "queuePushTaskExecutor")
+    public Executor queuePushTaskExecutor() {
 
         ThreadPoolTaskExecutor writeExecutor = new ThreadPoolTaskExecutor();
         writeExecutor.setMaxPoolSize(1);

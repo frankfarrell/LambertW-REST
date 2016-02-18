@@ -28,7 +28,6 @@ public class StatisticsService {
     Idea here is that we can return variety of stats
     Eg different statistics
     Filtered on different types, etc
-    Liek a sort of query language
      */
     public QueueStatistics getStatistics(final StatisticalSummaryRequest statisticalSummary){
         List<QueuedWorkOrder> filteredWorkOrders = this.workOrderQueue
@@ -65,6 +64,9 @@ public class StatisticsService {
         return queueStatistics;
     }
 
+    /*
+    Returns average wait time for a given collection of WorkOrders
+     */
     public double getAverageWaitTime(List<QueuedWorkOrder> workOrders){
         // Expect time from queue, since we have already claculated order there
         OptionalDouble average = workOrders

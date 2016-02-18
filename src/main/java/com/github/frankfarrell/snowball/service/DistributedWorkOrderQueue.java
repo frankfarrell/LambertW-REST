@@ -42,7 +42,7 @@ import java.util.stream.IntStream;
  * Scores the WorkOrders by Seconds since the EPOCH, GMT
  * Set property means that only one instance of Id can be stored in queue
  *
- * Future Extensions: Allows for Time To love on set entries
+ * Possible Future Extensions: Allows for Time To live on set entries
  */
 public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
@@ -59,19 +59,20 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
     protected Clock clock;
 
+    private static final String MANAGEMENT_QUEUE_NAME = "management";
+    private static final String VIP_QUEUE_NAME = "vip";
+    private static final String PRIORITY_QUEUE_NAME = "priority";
+    private static final String NORMAL_QUEUE_NAME = "normal";
+
     @Autowired
     public DistributedWorkOrderQueue(RedissonClient redisson,Clock clock) {
         this.redisson = redisson;
         this.clock = clock;
 
-        normalQueue = redisson.getScoredSortedSet("normal");
-        priorityQueue =  redisson.getScoredSortedSet("priority");
-        vipQueue = redisson.getScoredSortedSet("vip");
-        managementQueue =  redisson.getScoredSortedSet("management");
-    }
-
-    private Collection<ScoredEntry<Long>> getAllInQueue(RScoredSortedSet<Long> queue){
-        return queue.entryRange(Double.MIN_VALUE, true, Double.MAX_VALUE, true);
+        normalQueue = redisson.getScoredSortedSet(NORMAL_QUEUE_NAME);
+        priorityQueue =  redisson.getScoredSortedSet(PRIORITY_QUEUE_NAME);
+        vipQueue = redisson.getScoredSortedSet(VIP_QUEUE_NAME);
+        managementQueue =  redisson.getScoredSortedSet(MANAGEMENT_QUEUE_NAME);
     }
 
     @Override
@@ -79,7 +80,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
         /*
         Get all queues.
-        Map through function -> getComparatorForClass
+        Map through priority function
         Sort All
          */
         log.info("Enter getAllWorkOrders");
@@ -101,16 +102,13 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
                             WorkOrderClass.MANAGEMENT_OVERRIDE);
                 }).collect(Collectors.toList());
 
-        //Group all the rest together.
-        //IntStream.range(managementWorkOrders.size() , restOfThem - 1)
-        //And sort using function and now
-        //This is not he optimal solution,
 
+        //Group the rest together.
+        //This might not be the optimal solution
         List<ScoredEntry<Long>> nonManagementWorkOrders = new ArrayList<>();
         nonManagementWorkOrders.addAll(getAllInQueue(vipQueue));
         nonManagementWorkOrders.addAll(getAllInQueue(priorityQueue));
         nonManagementWorkOrders.addAll(getAllInQueue(normalQueue));
-
 
         //Sort them according to priority function score
         List<ScoredEntry<DurationValueStruct>> otherWorkOrders = nonManagementWorkOrders.stream()
@@ -163,6 +161,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
             OffsetDateTime timestamp = getOriginalTimestamp(queue.getScore(id));
 
             long durationInQueue =  timestamp.until(getCurrentTime(), ChronoUnit.SECONDS);
+
+            //Calculates position in queue for now
             long positionInQueue = getPositionForId(id);
             WorkOrderClass workOrderClass = getWorkOrderClass(id);
 
@@ -177,7 +177,9 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
-
+    /*
+    Async call to remove work order from queue
+    */
     @Override
     @Async(value = "queueWriteTaskExecutor")
     public Future<Boolean> removeWorkOrder(Long id) {
@@ -191,6 +193,9 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         return new AsyncResult<>(result);
     }
 
+    /*
+    Async call to pop top priority order from queue
+    */
     @Override
     @Async(value = "queueWriteTaskExecutor")
     public Future<Optional<QueuedWorkOrder>> popWorkOrder() {
@@ -199,7 +204,6 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         Get top from each queue
         Pick one that is first according to sorting
          */
-
         log.info("Enter popWorkOrder");
 
         if(managementQueue.size()>0){
@@ -279,8 +283,12 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
+    /*
+    Async call to push work order into queue
+    For queue to operate without non-stop queue size growth, pop frequency must be greater or equal than average than push frequency.
+    */
     @Override
-    @Async(value = "queueWriteTaskExecutor")
+    @Async(value = "queuePushTaskExecutor")
     public Future<QueuedWorkOrder> pushWorkOrder(WorkOrder workOrder) {
 
         log.info("Enter pushWorkOrder for id : {}", workOrder.getId());
@@ -299,6 +307,10 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
             return new AsyncResult<>(enqueuedWorkOrder);
         }
+    }
+
+    private Collection<ScoredEntry<Long>> getAllInQueue(RScoredSortedSet<Long> queue){
+        return queue.entryRange(Double.MIN_VALUE, true, Double.MAX_VALUE, true);
     }
 
     private OffsetDateTime getCurrentTime(){
@@ -411,10 +423,11 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
     /*
     This is used to find values that would be ahead of a given value in the queue
-    So, if we have a value in normal queue 3 seconds,
-    we want to get  all values in Normal between 0 - 3 seconds
-    and all values in Prioirity between 0 - 3*log(3) seconds
-    and all values in VIP between 0-2*3*log(3) seconds
+    So, if we have a value in normal queue 10 seconds,
+    we want to get  all values in Normal between 0 - 10 seconds
+    and all values in Prioirity between 0 - inverse(10*log(10))seconds
+    and all values in VIP between 0- inverse(2*10*log(10)) seconds
+    Use Lambert W function for inverse of nlogn
     */
     protected Function<Double, Double> getInversePriorityFunctionForClass(WorkOrderClass orderClass){
         switch(orderClass) {
