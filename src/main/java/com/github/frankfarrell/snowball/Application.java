@@ -102,11 +102,9 @@ public class Application {
             //redis://h:pq37lpe3ove4v5m82vnngas54c@ec2-176-34-249-171.eu-west-1.compute.amazonaws.com:19589
             URI redisURI = new URI(System.getenv("REDIS_URL"));
 
-            String[] userPassword = redisURI.getAuthority().split(":");
             config.useSingleServer()
                     .setAddress(redisURI.getHost() + ":" + redisURI.getPort())
-                    .setClientName(userPassword[0])
-                    .setPassword(userPassword[1]);
+                    .setPassword(redisURI.getAuthority());
         }
         else{
             config.useSingleServer().setAddress(redisAddress +":"+ redisPort);

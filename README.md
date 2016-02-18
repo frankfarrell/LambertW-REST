@@ -62,5 +62,6 @@ http://franksorder.herokuapp.com/swagger-ui.html
 * Performance Testing TODO
 
 # TODO
+* Distributed Read Write Locking on queues
 * UI Client that simulates push and pop requests and show status of the queue. Order, wait time etc.
 * More queue statistics

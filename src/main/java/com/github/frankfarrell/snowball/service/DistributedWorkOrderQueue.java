@@ -12,6 +12,8 @@ import org.redisson.client.protocol.ScoredEntry;
 import org.redisson.core.RLock;
 import org.redisson.core.RReadWriteLock;
 import org.redisson.core.RScoredSortedSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Clock;
@@ -40,6 +42,8 @@ import java.util.stream.IntStream;
  * Future Extensions: Allows for Time To love on set entries
  */
 public class DistributedWorkOrderQueue implements WorkOrderQueue {
+
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private RScoredSortedSet<Long> normalQueue;
     private RScoredSortedSet<Long> priorityQueue;
@@ -75,6 +79,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         Map through function -> getComparatorForClass
         Sort All
          */
+        log.info("Enter getAllWorkOrders");
+
         final OffsetDateTime now = getCurrentTime();
 
         List<ScoredEntry<Long>> managementWorkOrders = new ArrayList<>();
@@ -106,7 +112,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         //Sort them according to priority function score
         List<ScoredEntry<DurationValueStruct>> otherWorkOrders = nonManagementWorkOrders.stream()
                 .map(entry -> {
-                    Double durationInQueue = EPOCH.until(now, ChronoUnit.SECONDS) - entry.getScore();
+                    Double durationInQueue = getDurationInQueue(entry.getScore()).doubleValue();
                     Double priorityScore = getPriorityFunctionForClass(getWorkOrderClass(entry.getValue())).apply(durationInQueue);
                     return new ScoredEntry<DurationValueStruct>(priorityScore, new DurationValueStruct(entry.getValue(), durationInQueue, entry.getScore()));
                 })
@@ -136,6 +142,9 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
 
         allOrders.addAll(nonManagementOrders);
+
+        log.info("Exit getAllWorkOrders with {} work order", allOrders.size());
+
         return allOrders;
     }
 
@@ -143,18 +152,24 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     @Override
     public QueuedWorkOrder getWorkOrder(Long id) {
 
+        log.info("Enter getWorkOrder for id : {}", id);
+
         final RScoredSortedSet<Long> queue = getQueueForId(id);
 
         if(queue.contains(id)){
-            OffsetDateTime timestamp = EPOCH.plus(queue.getScore(id).longValue(), ChronoUnit.SECONDS);
+            OffsetDateTime timestamp = getOriginalTimestamp(queue.getScore(id));
 
             long durationInQueue =  timestamp.until(getCurrentTime(), ChronoUnit.SECONDS);
             long positionInQueue = getPositionForId(id);
-            WorkOrderClass workOrderClass =getWorkOrderClass(id);
+            WorkOrderClass workOrderClass = getWorkOrderClass(id);
 
-            return new QueuedWorkOrder(id, timestamp, durationInQueue, positionInQueue, workOrderClass);
+            QueuedWorkOrder workOrderResult = new QueuedWorkOrder(id, timestamp, durationInQueue, positionInQueue, workOrderClass);
+            log.info("Exit getWorkOrder for id : {}, result : {}", id, workOrderResult);
+
+            return workOrderResult;
         }
         else{
+            log.info("Exit getWorkOrder for id : {}, no result found", id);
             throw new NotFoundException("id", id);
         }
     }
@@ -162,18 +177,13 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
     @Override
     public void removeWorkOrder(Long id) {
+
+        log.info("Enter removeWorkOrder for id : {}", id);
+
         final RScoredSortedSet<Long> queue = getQueueForId(id);
-
-        //TODO Should we Check it exists first?
         queue.remove(id);
-    }
 
-    private Long getDurationInQueue(Double score){
-        return EPOCH.until(getCurrentTime(), ChronoUnit.SECONDS) - score.longValue();
-    }
-
-    private OffsetDateTime getOriginalTimestamp(Double score){
-        return EPOCH.plus(score.longValue(), ChronoUnit.SECONDS);
+        log.info("Exit removeWorkOrder for id : {}, ", id);
     }
 
     @Override
@@ -182,6 +192,8 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         Get top from each queue
         Pick one that is first according to sorting
          */
+
+        log.info("Enter popWorkOrder");
 
         if(managementQueue.size()>0){
 
@@ -198,6 +210,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
                     );
 
             managementQueue.removeRangeByRank(0,0);
+            log.info("Exit popWorkOrder with {}", orderToPop);
             return Optional.of(orderToPop);
         }
         else{
@@ -248,7 +261,11 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
                     .findFirst();
 
             if(topRankedValue.isPresent()){
+                log.info("Exit popWorkOrder with {}", topRankedValue.get());
                 getQueueForClass(topRankedValue.get().getWorkOrderClass()).removeRangeByRank(0,0);
+            }
+            else{
+                log.info("Exit popWorkOrder with no work order");
             }
             return topRankedValue;
 
@@ -258,14 +275,21 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
     @Override
     public QueuedWorkOrder pushWorkOrder(WorkOrder workOrder) {
 
+        log.info("Enter pushWorkOrder for id : {}", workOrder.getId());
         final RScoredSortedSet<Long> queue = getQueueForClass(getWorkOrderClass(workOrder.getId()));
 
         if(queue.contains(workOrder.getId())){
+            log.info("Exit pushWorkOrder for id : {}, order for id already exists", workOrder.getId());
             throw new AlreadyExistsException("id", workOrder.getId());
         }
         else{
             queue.add(EPOCH.until(workOrder.getTimeStamp(), ChronoUnit.SECONDS), workOrder.getId());
-            return new QueuedWorkOrder(workOrder.getId(), workOrder.getTimeStamp(), 0, getPositionForId(workOrder.getId()), getWorkOrderClass(workOrder.getId()));
+
+            QueuedWorkOrder enqueuedWorkOrder = new QueuedWorkOrder(workOrder.getId(), workOrder.getTimeStamp(), 0, getPositionForId(workOrder.getId()), getWorkOrderClass(workOrder.getId()));
+
+            log.info("Exit pushWorkOrder for id : {}, queued value : {}", workOrder.getId(), enqueuedWorkOrder);
+
+            return enqueuedWorkOrder;
         }
     }
 
@@ -273,8 +297,6 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         return OffsetDateTime.now(clock);
     }
 
-    //TODO If sets dont exist anymore do we need to create them?
-    //Why ? Last remove deletes the set
     private RScoredSortedSet<Long> getQueueForId(long id){
         if(id%3 == 0 && id%5 == 0){
             return managementQueue;
@@ -320,8 +342,12 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         }
     }
 
-    private long getQueueLength(){
-        return normalQueue.size() + priorityQueue.size() + vipQueue.size() + managementQueue.size();
+    private Long getDurationInQueue(Double score){
+        return EPOCH.until(getCurrentTime(), ChronoUnit.SECONDS) - score.longValue();
+    }
+
+    private OffsetDateTime getOriginalTimestamp(Double score){
+        return EPOCH.plus(score.longValue(), ChronoUnit.SECONDS);
     }
 
     /*
@@ -336,7 +362,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         final OffsetDateTime now = getCurrentTime();
 
         //How many seconds now after EPOCH, minus score
-        final Double durationInQueue = EPOCH.until(now, ChronoUnit.SECONDS) - rangeScore;
+        final Double durationInQueue = getDurationInQueue(rangeScore).doubleValue();
 
         if (getWorkOrderClass(id).equals(WorkOrderClass.MANAGEMENT_OVERRIDE)) {
             return getQueueSizeInRange(WorkOrderClass.MANAGEMENT_OVERRIDE ,WorkOrderClass.MANAGEMENT_OVERRIDE, durationInQueue, now) -1;
