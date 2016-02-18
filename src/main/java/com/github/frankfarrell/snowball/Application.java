@@ -104,7 +104,7 @@ public class Application {
 
             config.useSingleServer()
                     .setAddress(redisURI.getHost() + ":" + redisURI.getPort())
-                    .setPassword(redisURI.getAuthority());
+                    .setPassword(redisURI.getAuthority().split(":")[1]); //Strip the username from password
         }
         else{
             config.useSingleServer().setAddress(redisAddress +":"+ redisPort);
