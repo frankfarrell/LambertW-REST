@@ -12,6 +12,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Scope;
+import org.springframework.scheduling.annotation.EnableAsync;
 import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.service.ApiInfo;
 import springfox.documentation.spi.DocumentationType;
@@ -32,6 +34,7 @@ import java.util.Arrays;
  */
 @EnableSwagger2
 @SpringBootApplication
+@EnableAsync
 public class Application {
 
     private static ApplicationContext ctx;
@@ -73,6 +76,7 @@ public class Application {
     }
 
     @Bean
+    @Scope("singleton")
     public WorkOrderQueue workOrderQueue(RedissonClient redisson, Clock clock){
         return new DistributedWorkOrderQueue(redisson, clock);
     }

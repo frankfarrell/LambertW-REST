@@ -148,12 +148,12 @@ public class DistributedWorkQueuePopTest {
     }
 
     @Test
-    public void testPopWorkOrdersSingleManagement(){
+    public void testPopWorkOrdersSingleManagement() throws Exception{
 
         //Set up state of the queues with each test
         managementEntries.add(0, new ScoredEntry<>(BASE_SCORE-1, 15L));
 
-        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get();
+        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get().get();
 
         assert(workOrder.getPositionInQueue() == 0);
         assert(workOrder.getDurationInQueue() == 1);
@@ -163,11 +163,11 @@ public class DistributedWorkQueuePopTest {
     }
 
     @Test
-    public void testPopWorkOrdersSingleVip(){
+    public void testPopWorkOrdersSingleVip() throws Exception{
 
         vipEntries.add(0, new ScoredEntry<>(BASE_SCORE-5, 10L));
 
-        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get();
+        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get().get();
 
         assert(workOrder.getPositionInQueue() == 0);
         assert(workOrder.getDurationInQueue() == 5);
@@ -176,11 +176,11 @@ public class DistributedWorkQueuePopTest {
     }
 
     @Test
-    public void testPopWorkOrdersSinglePriority(){
+    public void testPopWorkOrdersSinglePriority() throws Exception{
 
         priorityEntries.add(0, new ScoredEntry<>(BASE_SCORE-1000, 9L));
 
-        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get();
+        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get().get();
 
         assert(workOrder.getPositionInQueue() == 0);
         assert(workOrder.getDurationInQueue() == 1000);
@@ -190,11 +190,11 @@ public class DistributedWorkQueuePopTest {
     }
 
     @Test
-    public void testPopWorkOrdersSingleNormal(){
+    public void testPopWorkOrdersSingleNormal() throws Exception{
 
         normalEntries.add(0, new ScoredEntry<>(BASE_SCORE-50000, 1L));
 
-        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get();
+        QueuedWorkOrder workOrder = distributedWorkOrderQueue.popWorkOrder().get().get();
 
         assert(workOrder.getPositionInQueue() == 0);
         assert(workOrder.getDurationInQueue() == 50000);
@@ -208,7 +208,7 @@ public class DistributedWorkQueuePopTest {
      */
 
     @Test
-    public void testPopWorkOrderGivesValuesSortedByPrioritySameTimeStamp() {
+    public void testPopWorkOrderGivesValuesSortedByPrioritySameTimeStamp() throws Exception {
 
         /*
         4 work orders with same timestmp, different priorities
@@ -220,20 +220,20 @@ public class DistributedWorkQueuePopTest {
 
         //All values should be at index 0 when popped
 
-        assert (distributedWorkOrderQueue.popWorkOrder().get().equals(new QueuedWorkOrder(15L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.MANAGEMENT_OVERRIDE)));
+        assert (distributedWorkOrderQueue.popWorkOrder().get().get().equals(new QueuedWorkOrder(15L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.MANAGEMENT_OVERRIDE)));
 
-        assert (distributedWorkOrderQueue.popWorkOrder().get().equals(new QueuedWorkOrder(10L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.VIP)));
+        assert (distributedWorkOrderQueue.popWorkOrder().get().get().equals(new QueuedWorkOrder(10L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.VIP)));
 
-        assert (distributedWorkOrderQueue.popWorkOrder().get().equals(new QueuedWorkOrder(9L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.PRIORITY)));
+        assert (distributedWorkOrderQueue.popWorkOrder().get().get().equals(new QueuedWorkOrder(9L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.PRIORITY)));
 
-        assert (distributedWorkOrderQueue.popWorkOrder().get().equals(new QueuedWorkOrder(1L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.NOMRAL)));
+        assert (distributedWorkOrderQueue.popWorkOrder().get().get().equals(new QueuedWorkOrder(1L, BASE_TIME.minus(100, ChronoUnit.SECONDS), 100L, 0, WorkOrderClass.NOMRAL)));
 
-        assert (!distributedWorkOrderQueue.popWorkOrder().isPresent());
+        assert (!distributedWorkOrderQueue.popWorkOrder().get().isPresent());
 
     }
 
     @Test
-    public void testGetAllReturnsSortedByPriorityWithDifferentTimeStamps(){
+    public void testGetAllReturnsSortedByPriorityWithDifferentTimeStamps() throws Exception{
 
         /*
         8 work orders with different timestamps, different priorities
@@ -250,21 +250,21 @@ public class DistributedWorkQueuePopTest {
         normalEntries.add(0, new ScoredEntry<>(BASE_SCORE-7, 1L));//6
         normalEntries.add(1, new ScoredEntry<>(BASE_SCORE-6, 2L));//7
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(15L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.MANAGEMENT_OVERRIDE));
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(30L, BASE_TIME.minus(50, ChronoUnit.SECONDS),50L, 0, WorkOrderClass.MANAGEMENT_OVERRIDE));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(15L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.MANAGEMENT_OVERRIDE));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(30L, BASE_TIME.minus(50, ChronoUnit.SECONDS),50L, 0, WorkOrderClass.MANAGEMENT_OVERRIDE));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(10L, BASE_TIME.minus(200, ChronoUnit.SECONDS),200L,  0, WorkOrderClass.VIP));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(10L, BASE_TIME.minus(200, ChronoUnit.SECONDS),200L,  0, WorkOrderClass.VIP));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(9L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.PRIORITY));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(9L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.PRIORITY));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(20L, BASE_TIME.minus(5, ChronoUnit.SECONDS),5L,  0, WorkOrderClass.VIP));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(20L, BASE_TIME.minus(5, ChronoUnit.SECONDS),5L,  0, WorkOrderClass.VIP));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(12L, BASE_TIME.minus(6, ChronoUnit.SECONDS),6L, 0, WorkOrderClass.PRIORITY));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(12L, BASE_TIME.minus(6, ChronoUnit.SECONDS),6L, 0, WorkOrderClass.PRIORITY));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(1L, BASE_TIME.minus(7, ChronoUnit.SECONDS),7L,  0, WorkOrderClass.NOMRAL));
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(2L, BASE_TIME.minus(6, ChronoUnit.SECONDS),6L,  0, WorkOrderClass.NOMRAL));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(1L, BASE_TIME.minus(7, ChronoUnit.SECONDS),7L,  0, WorkOrderClass.NOMRAL));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(2L, BASE_TIME.minus(6, ChronoUnit.SECONDS),6L,  0, WorkOrderClass.NOMRAL));
 
-        assert (!distributedWorkOrderQueue.popWorkOrder().isPresent());
+        assert (!distributedWorkOrderQueue.popWorkOrder().get().isPresent());
     }
 
 
@@ -273,7 +273,7 @@ public class DistributedWorkQueuePopTest {
      */
 
     @Test
-    public void testGetAllReturnsSortedByPriorityWithDifferentTimeStampsWithChangeInTime(){
+    public void testGetAllReturnsSortedByPriorityWithDifferentTimeStampsWithChangeInTime() throws Exception{
 
         /*
         8 work orders with different timestamps, different priorities       Orig    Score @0       Score @ +10 Sec Score
@@ -290,25 +290,25 @@ public class DistributedWorkQueuePopTest {
         normalEntries.add(0, new ScoredEntry<>(BASE_SCORE-30, 1L));          //6     30                 40              7
         normalEntries.add(1, new ScoredEntry<>(BASE_SCORE-100, 2L));          //2    100                110             3
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(15L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.MANAGEMENT_OVERRIDE));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(15L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.MANAGEMENT_OVERRIDE));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(30L, BASE_TIME.minus(50, ChronoUnit.SECONDS),50L, 0, WorkOrderClass.MANAGEMENT_OVERRIDE));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(30L, BASE_TIME.minus(50, ChronoUnit.SECONDS),50L, 0, WorkOrderClass.MANAGEMENT_OVERRIDE));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(2L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.NOMRAL));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(2L, BASE_TIME.minus(100, ChronoUnit.SECONDS),100L,  0, WorkOrderClass.NOMRAL));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(),new QueuedWorkOrder(9L, BASE_TIME.minus(18, ChronoUnit.SECONDS),18L,  0, WorkOrderClass.PRIORITY));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(),new QueuedWorkOrder(9L, BASE_TIME.minus(18, ChronoUnit.SECONDS),18L,  0, WorkOrderClass.PRIORITY));
 
         tickClock(10);
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(),new QueuedWorkOrder(10L, BASE_TIME.minus(10, ChronoUnit.SECONDS),20L,  0, WorkOrderClass.VIP));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(),new QueuedWorkOrder(10L, BASE_TIME.minus(10, ChronoUnit.SECONDS),20L,  0, WorkOrderClass.VIP));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(), new QueuedWorkOrder(20L, BASE_TIME.minus(5, ChronoUnit.SECONDS),15L,  0, WorkOrderClass.VIP));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(), new QueuedWorkOrder(20L, BASE_TIME.minus(5, ChronoUnit.SECONDS),15L,  0, WorkOrderClass.VIP));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(),new QueuedWorkOrder(12L, BASE_TIME.minus(13, ChronoUnit.SECONDS),23L, 0, WorkOrderClass.PRIORITY));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(),new QueuedWorkOrder(12L, BASE_TIME.minus(13, ChronoUnit.SECONDS),23L, 0, WorkOrderClass.PRIORITY));
 
-        assertEquals(distributedWorkOrderQueue.popWorkOrder().get(),new QueuedWorkOrder(1L, BASE_TIME.minus(30, ChronoUnit.SECONDS),40L, 0, WorkOrderClass.NOMRAL));
+        assertEquals(distributedWorkOrderQueue.popWorkOrder().get().get(),new QueuedWorkOrder(1L, BASE_TIME.minus(30, ChronoUnit.SECONDS),40L, 0, WorkOrderClass.NOMRAL));
 
-        assert (!distributedWorkOrderQueue.popWorkOrder().isPresent());
+        assert (!distributedWorkOrderQueue.popWorkOrder().get().isPresent());
     }
 
     private void tickClock(Integer seconds){

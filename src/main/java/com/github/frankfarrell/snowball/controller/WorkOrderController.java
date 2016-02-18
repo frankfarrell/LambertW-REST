@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by Frank on 12/02/2016.
@@ -78,9 +79,11 @@ public class WorkOrderController {
             method = RequestMethod.DELETE,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity deleteWorkOrder(@PathVariable @Valid Long id){//TODO validate all ids
+    public @ResponseBody ResponseEntity deleteWorkOrder(@PathVariable Long id) throws InterruptedException, ExecutionException{//TODO validate all ids
 
-        workOrderQueue.removeWorkOrder(id);
+        //Blocks until Request Complete
+        //Should this be fire and forget?
+        workOrderQueue.removeWorkOrder(id).get();
         return new ResponseEntity(HttpStatus.NO_CONTENT);
 
     }
@@ -117,8 +120,9 @@ public class WorkOrderController {
             method = RequestMethod.POST,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> popWorkOrder(){
-        Optional<QueuedWorkOrder> nextOrder = workOrderQueue.popWorkOrder();
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> popWorkOrder() throws InterruptedException, ExecutionException{
+
+        Optional<QueuedWorkOrder> nextOrder = workOrderQueue.popWorkOrder().get();
         if(nextOrder.isPresent()){
             return new ResponseEntity<QueuedWorkOrder>(nextOrder.get(), HttpStatus.OK);
         }
@@ -133,8 +137,8 @@ public class WorkOrderController {
             method = RequestMethod.PUT,
             produces = {MediaType.APPLICATION_JSON_VALUE}
     )
-    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@RequestBody @Valid WorkOrder order){//TODO Change this to ISOFormat, put in request header? or WorkOrder with serialiser
-        QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(order);
+    public @ResponseBody ResponseEntity<QueuedWorkOrder> pushWorkOrder(@RequestBody @Valid WorkOrder order) throws InterruptedException, ExecutionException{
+        QueuedWorkOrder workOrder = workOrderQueue.pushWorkOrder(order).get();
         return new ResponseEntity<QueuedWorkOrder>(workOrder, HttpStatus.CREATED);
     }
 

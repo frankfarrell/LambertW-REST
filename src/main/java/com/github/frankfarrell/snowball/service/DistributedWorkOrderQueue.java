@@ -15,6 +15,8 @@ import org.redisson.core.RScoredSortedSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -23,6 +25,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAmount;
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -176,18 +179,22 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
 
     @Override
-    public void removeWorkOrder(Long id) {
+    @Async(value = "queueWriteTaskExecutor")
+    public Future<Boolean> removeWorkOrder(Long id) {
 
         log.info("Enter removeWorkOrder for id : {}", id);
 
         final RScoredSortedSet<Long> queue = getQueueForId(id);
-        queue.remove(id);
+        Boolean result = queue.remove(id);
 
         log.info("Exit removeWorkOrder for id : {}, ", id);
+        return new AsyncResult<>(result);
     }
 
     @Override
-    public Optional<QueuedWorkOrder> popWorkOrder() {
+    @Async(value = "queueWriteTaskExecutor")
+    public Future<Optional<QueuedWorkOrder>> popWorkOrder() {
+
         /*
         Get top from each queue
         Pick one that is first according to sorting
@@ -211,7 +218,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
             managementQueue.removeRangeByRank(0,0);
             log.info("Exit popWorkOrder with {}", orderToPop);
-            return Optional.of(orderToPop);
+            return new AsyncResult<Optional<QueuedWorkOrder>>(Optional.of(orderToPop));
         }
         else{
             //Iterate over the three other WorkOrder Classes.
@@ -267,13 +274,14 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
             else{
                 log.info("Exit popWorkOrder with no work order");
             }
-            return topRankedValue;
+            return new AsyncResult<Optional<QueuedWorkOrder>>(topRankedValue);
 
         }
     }
 
     @Override
-    public QueuedWorkOrder pushWorkOrder(WorkOrder workOrder) {
+    @Async(value = "queueWriteTaskExecutor")
+    public Future<QueuedWorkOrder> pushWorkOrder(WorkOrder workOrder) {
 
         log.info("Enter pushWorkOrder for id : {}", workOrder.getId());
         final RScoredSortedSet<Long> queue = getQueueForClass(getWorkOrderClass(workOrder.getId()));
@@ -289,7 +297,7 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
 
             log.info("Exit pushWorkOrder for id : {}, queued value : {}", workOrder.getId(), enqueuedWorkOrder);
 
-            return enqueuedWorkOrder;
+            return new AsyncResult<>(enqueuedWorkOrder);
         }
     }
 
@@ -496,31 +504,4 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         this.clock = clock;
     }
 
-
-    /*
-     * TODO Implement ReadLock, WriteLockAspects that acquire locks on queues as necessary
-     *
-     * https://github.com/rmalchow/lock-aspect/blob/master/src/main/java/com/skjlls/aspects/lock/impl/LockAspect.java
-      * Eg
-      * @ReadLock(queues=[MANAGEMENT, VIP, PRIORITY, NORMAL])
-      * @WriteLock(queues=[MANAGEMENT])
-     * @param orderClass
-     * @return
-     */
-    //If I want this to be distributed need ReadWriteLocks on the Queues:
-    public RLock getReadLock(WorkOrderClass orderClass){
-
-        RReadWriteLock readWritelock = this.redisson.getReadWriteLock(getLockKeyForClass(orderClass));
-        return readWritelock.readLock();
-
-    }
-
-    private String getLockKeyForClass(WorkOrderClass orderClass){
-        switch(orderClass){
-            case MANAGEMENT_OVERRIDE:
-                return "managementLock";
-            default:
-                return null;
-        }
-    }
 }
