@@ -8,6 +8,8 @@ import com.github.frankfarrell.snowball.service.WorkOrderQueue;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
 /**
@@ -65,10 +67,11 @@ public class StatisticsService {
 
     public double getAverageWaitTime(List<QueuedWorkOrder> workOrders){
         // Expect time from queue, since we have already claculated order there
-        return workOrders
+        OptionalDouble average = workOrders
                 .stream()
                 .mapToLong(QueuedWorkOrder::getDurationInQueue)
-                .average()
-                .getAsDouble();
+                .average();
+
+        return average.isPresent()? average.getAsDouble():0; //Assuming zero is the average on no elements
     }
 }
