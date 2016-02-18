@@ -98,13 +98,11 @@ public class Application {
 
         //Unfortunately this is the only way to get it to work
         if(redisHeroku){
-
-            //redis://h:pq37lpe3ove4v5m82vnngas54c@ec2-176-34-249-171.eu-west-1.compute.amazonaws.com:19589
+            
             URI redisURI = new URI(System.getenv("REDIS_URL"));
-
             config.useSingleServer()
                     .setAddress(redisURI.getHost() + ":" + redisURI.getPort())
-                    .setPassword(redisURI.getAuthority().split(":")[1]); //Strip the username from password
+                    .setPassword(redisURI.getAuthority().split("[:@]")[1]); //Strip the username from password
         }
         else{
             config.useSingleServer().setAddress(redisAddress +":"+ redisPort);
