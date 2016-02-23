@@ -379,6 +379,13 @@ public class DistributedWorkOrderQueue implements WorkOrderQueue {
         //This is seconds since epoch on insert
         final Double rangeScore =  getQueueForId(id).getScore(id);
 
+        //This can happen if Value has not been persisted in Redis yet?
+        //At least, we can take a guess that new value will be near back of queue
+        //Should be fixed, concurrency issue
+        if(rangeScore == null){
+            return Long.MAX_VALUE;
+        }
+
         final OffsetDateTime now = getCurrentTime();
 
         //How many seconds now after EPOCH, minus score
